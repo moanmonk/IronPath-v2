@@ -1,0 +1,6 @@
+{
+  "name": "IronPath V2",
+  "description": "Evidence-Based Hypertrophy & Physique Coaching Platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

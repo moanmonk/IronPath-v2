@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="#09090b" stroke="#27272a" stroke-width="8" />
+  <rect x="36" y="36" width="440" height="440" rx="88" fill="#18181b" stroke="#a855f7" stroke-width="4" stroke-opacity="0.4" />
+
+  <!-- Heavy Steel Barbell Shaft -->
+  <rect x="64" y="232" width="384" height="48" rx="16" fill="#e4e4e7" />
+
+  <!-- Outer Heavy Plate Left -->
+  <rect x="110" y="112" width="56" height="288" rx="16" fill="#a855f7" />
+  <!-- Inner Plate Left -->
+  <rect x="178" y="152" width="40" height="208" rx="12" fill="#6366f1" />
+
+  <!-- Outer Heavy Plate Right -->
+  <rect x="346" y="112" width="56" height="288" rx="16" fill="#a855f7" />
+  <!-- Inner Plate Right -->
+  <rect x="294" y="152" width="40" height="208" rx="12" fill="#6366f1" />
+
+  <!-- Center Precision Collar -->
+  <circle cx="256" cy="256" r="48" fill="#09090b" stroke="#e4e4e7" stroke-width="12" />
+</svg>
