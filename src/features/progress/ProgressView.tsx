@@ -144,23 +144,24 @@ export const ProgressView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <Badge variant="emerald" className="mb-1">PROGRESSION & HISTORY</Badge>
-          <h2 className="text-2xl sm:text-3xl font-black text-zinc-100">Workout History & PR Tracking</h2>
+          <h2 className="text-2xl sm:text-3xl font-black text-zinc-100">Workout History & Body Stats</h2>
           <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-            Track your workout logs, personal records, body metrics, and muscle group volume overload.
+            Track your workout logs, personal records, body measurements, weight, and muscle group volume overload.
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {activeSubTab === 'measurements' && (
-            <Button
-              variant="primary"
-              onClick={() => setIsLogModalOpen(true)}
-              leftIcon={<Plus className="w-4 h-4 shrink-0 text-zinc-950" />}
-              className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black shadow-lg shadow-emerald-500/20 px-4 py-2 rounded-xl text-xs sm:text-sm"
-            >
-              Log Measurements
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            onClick={() => {
+              setActiveSubTab('measurements');
+              setIsLogModalOpen(true);
+            }}
+            leftIcon={<Ruler className="w-4 h-4 shrink-0 text-blue-400" />}
+            className="border-blue-500/30 text-blue-300 hover:bg-blue-500/10 font-bold px-3.5 py-2 rounded-xl text-xs sm:text-sm"
+          >
+            Log Body Stats
+          </Button>
 
           {activeSubTab === 'prs' && (
             <Button
@@ -224,7 +225,7 @@ export const ProgressView: React.FC = () => {
           }`}
         >
           <Ruler className="w-4 h-4 text-blue-400" />
-          Body Stats & Weight
+          Body Stats & Measurements ({bodyMeasurements.length})
         </button>
 
         <button
@@ -244,7 +245,7 @@ export const ProgressView: React.FC = () => {
       {/* SUB-TAB 1: WORKOUT HISTORY LOGS */}
       {activeSubTab === 'history' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Sessions Completed"
               value={workoutHistory.length}
@@ -266,6 +267,18 @@ export const ProgressView: React.FC = () => {
               icon={<Clock className="w-5 h-5 text-blue-400" />}
               accentGradient="from-blue-500/20 to-transparent"
             />
+            <div 
+              onClick={() => setActiveSubTab('measurements')}
+              className="cursor-pointer transition-all group"
+            >
+              <MetricCard
+                title="Latest Body Weight"
+                value={latestMeasurement?.weightKg ? `${latestMeasurement.weightKg} kg` : 'Log Stats'}
+                subtitle={latestMeasurement ? `Logged ${latestMeasurement.date}` : 'Click to view body stats'}
+                icon={<Scale className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" />}
+                accentGradient="from-blue-500/20 to-transparent"
+              />
+            </div>
           </div>
 
           {workoutHistory.length === 0 ? (
