@@ -21,6 +21,23 @@ export type MuscleGroup =
   | 'calves' 
   | 'abs';
 
+export const ALL_MUSCLE_GROUPS: { id: MuscleGroup; label: string }[] = [
+  { id: 'chest', label: 'Chest' },
+  { id: 'side_delts', label: 'Side Delts' },
+  { id: 'front_delts', label: 'Front Delts' },
+  { id: 'rear_delts', label: 'Rear Delts' },
+  { id: 'lats', label: 'Lats' },
+  { id: 'upper_back', label: 'Upper Back' },
+  { id: 'biceps', label: 'Biceps' },
+  { id: 'triceps', label: 'Triceps' },
+  { id: 'forearms', label: 'Forearms' },
+  { id: 'quads', label: 'Quads' },
+  { id: 'hamstrings', label: 'Hamstrings' },
+  { id: 'glutes', label: 'Glutes' },
+  { id: 'calves', label: 'Calves' },
+  { id: 'abs', label: 'Abs' },
+];
+
 export type PhysiqueTargetId = 
   | 'lean_v_taper' 
   | 'classic_aesthetic' 

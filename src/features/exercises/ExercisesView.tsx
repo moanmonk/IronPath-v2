@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { BottomSheet } from '../../components/ui/BottomSheet';
-import { Exercise, MuscleGroup } from '../../types';
+import { Exercise, MuscleGroup, ALL_MUSCLE_GROUPS } from '../../types';
 
 export const ExercisesView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -15,20 +15,7 @@ export const ExercisesView: React.FC = () => {
 
   const muscleList: { id: string; label: string }[] = [
     { id: 'all', label: 'All Muscles' },
-    { id: 'chest', label: 'Chest' },
-    { id: 'side_delts', label: 'Side Delts' },
-    { id: 'lats', label: 'Lats' },
-    { id: 'upper_back', label: 'Upper Back' },
-    { id: 'biceps', label: 'Biceps' },
-    { id: 'triceps', label: 'Triceps' },
-    { id: 'forearms', label: 'Forearms' },
-    { id: 'quads', label: 'Quads' },
-    { id: 'hamstrings', label: 'Hamstrings' },
-    { id: 'glutes', label: 'Glutes' },
-    { id: 'calves', label: 'Calves' },
-    { id: 'abs', label: 'Abs' },
-    { id: 'rear_delts', label: 'Rear Delts' },
-    { id: 'front_delts', label: 'Front Delts' }
+    ...ALL_MUSCLE_GROUPS
   ];
 
   const equipmentList: { id: string; label: string }[] = [

@@ -3,7 +3,7 @@ import { Search, RefreshCw, Sparkles, Plus, Dumbbell, ShieldCheck } from 'lucide
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { Exercise, CustomWorkoutExercise, MuscleGroup } from '../../types';
+import { Exercise, CustomWorkoutExercise, MuscleGroup, ALL_MUSCLE_GROUPS } from '../../types';
 import { useIronPathStore } from '../../store/useIronPathStore';
 
 interface ExerciseSwapModalProps {
@@ -70,17 +70,17 @@ export const ExerciseSwapModal: React.FC<ExerciseSwapModalProps> = ({
           >
             All Muscles
           </button>
-          {['chest', 'lats', 'side_delts', 'biceps', 'triceps', 'quads', 'hamstrings', 'calves', 'abs'].map((m) => (
+          {ALL_MUSCLE_GROUPS.map((m) => (
             <button
-              key={m}
-              onClick={() => setMuscleFilter(m)}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all capitalize whitespace-nowrap ${
-                muscleFilter === m
+              key={m.id}
+              onClick={() => setMuscleFilter(m.id)}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                muscleFilter === m.id
                   ? 'bg-purple-600 text-white'
                   : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              {m.replace('_', ' ')}
+              {m.label}
             </button>
           ))}
         </div>

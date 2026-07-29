@@ -35,7 +35,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { BottomSheet } from '../../components/ui/BottomSheet';
-import { Exercise, MuscleGroup, CustomWorkoutPlan } from '../../types';
+import { Exercise, MuscleGroup, CustomWorkoutPlan, ALL_MUSCLE_GROUPS } from '../../types';
 import { PlanEditorModal } from '../programs/PlanEditorModal';
 import { PlanJSONModal } from '../programs/PlanJSONModal';
 import { calculateCustomDayDurationMinutes, formatDurationMinutes } from '../../lib/workoutTimeUtils';
@@ -762,17 +762,17 @@ export const WorkoutPlannerView: React.FC = () => {
             >
               All
             </button>
-            {['chest', 'lats', 'side_delts', 'biceps', 'triceps', 'quads', 'hamstrings', 'calves', 'abs'].map((m) => (
+            {ALL_MUSCLE_GROUPS.map((m) => (
               <button
-                key={m}
-                onClick={() => setMuscleFilter(m)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all capitalize whitespace-nowrap ${
-                  muscleFilter === m
+                key={m.id}
+                onClick={() => setMuscleFilter(m.id)}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  muscleFilter === m.id
                     ? 'bg-purple-600 text-white'
                     : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
                 }`}
               >
-                {m.replace('_', ' ')}
+                {m.label}
               </button>
             ))}
           </div>
@@ -855,17 +855,13 @@ export const WorkoutPlannerView: React.FC = () => {
               <select
                 value={customExMuscle}
                 onChange={(e) => setCustomExMuscle(e.target.value as MuscleGroup)}
-                className="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-zinc-100 focus:outline-none focus:border-purple-500 capitalize"
+                className="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-zinc-100 focus:outline-none focus:border-purple-500"
               >
-                <option value="chest">Chest</option>
-                <option value="lats">Lats</option>
-                <option value="side_delts">Side Delts</option>
-                <option value="biceps">Biceps</option>
-                <option value="triceps">Triceps</option>
-                <option value="quads">Quads</option>
-                <option value="hamstrings">Hamstrings</option>
-                <option value="calves">Calves</option>
-                <option value="abs">Abs</option>
+                {ALL_MUSCLE_GROUPS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
               </select>
             </div>
 
