@@ -37,7 +37,7 @@ export const ProgressCharts: React.FC<ProgressChartsProps> = ({
   recoveryList,
   workoutHistory
 }) => {
-  const [chartType, setChartType] = useState<'weight' | 'volume' | 'muscles' | 'prs'>('weight');
+  const [chartType, setChartType] = useState<'weight' | 'volume' | 'prs'>('weight');
   const [measurementMetric, setMeasurementMetric] = useState<'weightKg' | 'waistCm' | 'chestCm' | 'armsCm' | 'shouldersCm' | 'bodyFatPercentage'>('weightKg');
 
   // Prepare chronological body measurement data for Recharts
@@ -120,17 +120,6 @@ export const ProgressCharts: React.FC<ProgressChartsProps> = ({
             }`}
           >
             <BarChart3 className="w-3.5 h-3.5" /> Session Tonnage
-          </button>
-          <button
-            type="button"
-            onClick={() => setChartType('muscles')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-              chartType === 'muscles'
-                ? 'bg-emerald-500 text-zinc-950 font-black shadow-md shadow-emerald-500/20'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" /> Muscle Sets
           </button>
           <button
             type="button"
@@ -248,36 +237,7 @@ export const ProgressCharts: React.FC<ProgressChartsProps> = ({
         </div>
       )}
 
-      {/* Chart 3: Muscle Set Distribution */}
-      {chartType === 'muscles' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-zinc-300 font-medium">14-Muscle Group Weekly Set Volume vs Target (MAV Range)</span>
-            <span className="text-purple-400 font-bold">10 - 20 Sets/Wk Optimal</span>
-          </div>
-
-          <div className="h-72 sm:h-80 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={muscleVolumeData} layout="vertical" margin={{ top: 5, right: 20, left: 40, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                <XAxis type="number" stroke="#71717a" fontSize={11} domain={[0, 24]} />
-                <YAxis dataKey="muscleName" type="category" stroke="#a1a1aa" fontSize={11} width={85} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#09090b', borderColor: '#27272a', borderRadius: '12px', color: '#f4f4f5' }}
-                  formatter={(value: any, name: string) => [
-                    `${value} sets`,
-                    name === 'setsDone' ? 'Completed Sets' : 'Target Goal'
-                  ]}
-                />
-                <Bar dataKey="setsDone" name="Sets Done" fill="#10b981" radius={[0, 6, 6, 0]} />
-                <Bar dataKey="targetSets" name="Target Goal" fill="#3f3f46" radius={[0, 6, 6, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* Chart 4: PR Progression */}
+      {/* Chart 3: PR Progression */}
       {chartType === 'prs' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between text-xs text-zinc-400">
