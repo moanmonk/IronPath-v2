@@ -18,6 +18,7 @@ import {
   ChevronDown,
   X,
   FileJson,
+  Printer,
   Zap,
   Tag,
   Archive,
@@ -510,10 +511,11 @@ export const WorkoutPlannerView: React.FC = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => setJsonModalState({ isOpen: true, mode: 'export', plan })}
-                            leftIcon={<FileJson className="w-3.5 h-3.5" />}
-                            title="Export JSON"
+                            leftIcon={<Printer className="w-3.5 h-3.5 text-purple-400" />}
+                            title="Export Blueprint (PDF, JSON, Prompt, Note)"
+                            className="text-purple-300 font-bold"
                           >
-                            JSON
+                            Export
                           </Button>
                         </div>
 

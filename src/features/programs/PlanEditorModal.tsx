@@ -14,7 +14,10 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
-  Clock
+  Clock,
+  Printer,
+  FileJson,
+  Share2
 } from 'lucide-react';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
@@ -22,6 +25,7 @@ import { Badge } from '../../components/ui/Badge';
 import { CustomWorkoutPlan, CustomWorkoutDay, CustomWorkoutExercise } from '../../types';
 import { useIronPathStore } from '../../store/useIronPathStore';
 import { ExerciseSwapModal } from './ExerciseSwapModal';
+import { PlanJSONModal } from './PlanJSONModal';
 import { calculateCustomDayDurationMinutes, formatDurationMinutes } from '../../lib/workoutTimeUtils';
 
 interface PlanEditorModalProps {
@@ -73,6 +77,9 @@ export const PlanEditorModal: React.FC<PlanEditorModalProps> = ({
   // Exercise Swap Modal State
   const [swapTarget, setSwapTarget] = useState<{ dayId: string; ex: CustomWorkoutExercise } | null>(null);
 
+  // Export Blueprint Modal State
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
   // Expanded Day Accordion State
   const [expandedDayId, setExpandedDayId] = useState<string | null>(plan.days[0]?.id || null);
 
@@ -109,9 +116,21 @@ export const PlanEditorModal: React.FC<PlanEditorModalProps> = ({
               <span className="text-xs font-bold uppercase tracking-widest text-purple-400 font-mono flex items-center gap-1.5">
                 <Target className="w-3.5 h-3.5" /> Plan Overview
               </span>
-              <Button variant="ghost" size="sm" onClick={handleSaveOverview} leftIcon={<Save className="w-3.5 h-3.5" />}>
-                Save Info
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsExportModalOpen(true)} 
+                  leftIcon={<Printer className="w-3.5 h-3.5 text-purple-400" />}
+                  className="border-purple-500/30 text-purple-300 hover:bg-purple-500/10 font-bold"
+                >
+                  Export Blueprint
+                </Button>
+
+                <Button variant="ghost" size="sm" onClick={handleSaveOverview} leftIcon={<Save className="w-3.5 h-3.5" />}>
+                  Save Info
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -625,6 +644,14 @@ export const PlanEditorModal: React.FC<PlanEditorModalProps> = ({
           currentExercise={swapTarget.ex}
         />
       )}
+
+      {/* Export Blueprint Modal */}
+      <PlanJSONModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        mode="export"
+        planToExport={plan}
+      />
     </>
   );
 };
