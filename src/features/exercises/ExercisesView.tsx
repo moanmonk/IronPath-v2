@@ -21,8 +21,12 @@ export const ExercisesView: React.FC = () => {
     { id: 'upper_back', label: 'Upper Back' },
     { id: 'biceps', label: 'Biceps' },
     { id: 'triceps', label: 'Triceps' },
+    { id: 'forearms', label: 'Forearms' },
     { id: 'quads', label: 'Quads' },
     { id: 'hamstrings', label: 'Hamstrings' },
+    { id: 'glutes', label: 'Glutes' },
+    { id: 'calves', label: 'Calves' },
+    { id: 'abs', label: 'Abs' },
     { id: 'rear_delts', label: 'Rear Delts' },
     { id: 'front_delts', label: 'Front Delts' }
   ];

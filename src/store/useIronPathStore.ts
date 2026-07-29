@@ -153,6 +153,12 @@ interface IronPathState {
   workoutHistory: WorkoutSession[];
   recoveryList: MuscleRecovery[];
   personalRecords: PersonalRecord[];
+  clearWorkoutHistory: () => void;
+  deleteWorkoutSession: (sessionId: string) => void;
+  clearPersonalRecords: () => void;
+  deletePersonalRecord: (recordId: string) => void;
+  addPersonalRecord: (pr: Omit<PersonalRecord, 'id'>) => void;
+  resetAllHistoryAndPRs: () => void;
 
   // Body Measurements
   bodyMeasurements: BodyMeasurementEntry[];
@@ -169,6 +175,8 @@ const STORAGE_KEY_WORKOUT = 'ironpath_active_workout';
 const STORAGE_KEY_PROFILE = 'ironpath_user_profile';
 const STORAGE_KEY_PLANS = 'ironpath_custom_plans';
 const STORAGE_KEY_MEASUREMENTS = 'ironpath_body_measurements';
+const STORAGE_KEY_HISTORY = 'ironpath_workout_history';
+const STORAGE_KEY_PRS = 'ironpath_personal_records';
 
 const INITIAL_DEFAULT_PLANS: CustomWorkoutPlan[] = [
   {
@@ -310,6 +318,32 @@ const loadSavedMeasurements = (): BodyMeasurementEntry[] => {
   return INITIAL_BODY_MEASUREMENTS;
 };
 
+const loadSavedHistory = (): WorkoutSession[] => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_HISTORY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // fallback
+  }
+  return []; // Fresh empty default
+};
+
+const loadSavedPRs = (): PersonalRecord[] => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_PRS);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // fallback
+  }
+  return []; // Fresh empty default
+};
+
 export const useIronPathStore = create<IronPathState>((set, get) => ({
   activeTab: 'train',
   setActiveTab: (tab) => {
@@ -383,21 +417,69 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
   },
 
   finishWorkout: () => {
-    const { activeWorkout } = get();
-    // Celebrate & reset workout or mark as complete
+    const { activeWorkout, personalRecords, workoutHistory } = get();
+    // Celebrate & mark workout as complete
     const completedWorkout: WorkoutSession = {
       ...activeWorkout,
       completed: true,
       endTime: new Date().toISOString()
     };
-    set((state) => ({
+
+    const newHistory = [completedWorkout, ...workoutHistory];
+
+    // Auto-detect PRs achieved during this workout
+    const updatedPRs = [...personalRecords];
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    completedWorkout.exercises.forEach((pe) => {
+      pe.sets.forEach((s) => {
+        if (s.completed && s.weight > 0 && s.reps > 0) {
+          const e1rm = Math.round((s.weight * (1 + s.reps / 30)) * 10) / 10;
+          const exName = pe.exercise.name;
+          const existingIdx = updatedPRs.findIndex(
+            (pr) => pr.exerciseName.toLowerCase() === exName.toLowerCase()
+          );
+
+          if (existingIdx >= 0) {
+            const existing = updatedPRs[existingIdx];
+            if (s.weight > existing.weight || e1rm > existing.estimated1RM) {
+              updatedPRs[existingIdx] = {
+                ...existing,
+                weight: Math.max(existing.weight, s.weight),
+                reps: s.reps,
+                estimated1RM: Math.max(existing.estimated1RM, e1rm),
+                date: todayStr,
+                isRecent: true
+              };
+            }
+          } else {
+            updatedPRs.push({
+              id: `pr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              exerciseName: exName,
+              muscle: pe.exercise.primaryMuscle,
+              weight: s.weight,
+              reps: s.reps,
+              estimated1RM: e1rm,
+              date: todayStr,
+              isRecent: true
+            });
+          }
+        }
+      });
+    });
+
+    set({
       activeWorkout: completedWorkout,
       isWorkoutInProgress: false,
       activeTab: 'train',
-      workoutHistory: [completedWorkout, ...state.workoutHistory]
-    }));
+      workoutHistory: newHistory,
+      personalRecords: updatedPRs
+    });
+
     try {
       localStorage.removeItem(STORAGE_KEY_WORKOUT);
+      localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(newHistory));
+      localStorage.setItem(STORAGE_KEY_PRS, JSON.stringify(updatedPRs));
     } catch {}
   },
 
@@ -622,9 +704,65 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
     });
   },
 
-  workoutHistory: [INITIAL_TODAY_WORKOUT],
+  workoutHistory: loadSavedHistory(),
   recoveryList: RECOVERY_STATUS,
-  personalRecords: RECENT_PRS,
+  personalRecords: loadSavedPRs(),
+
+  clearWorkoutHistory: () => {
+    set({ workoutHistory: [] });
+    try {
+      localStorage.removeItem(STORAGE_KEY_HISTORY);
+    } catch {}
+  },
+
+  deleteWorkoutSession: (sessionId) => {
+    set((state) => {
+      const updated = state.workoutHistory.filter((w) => w.id !== sessionId);
+      try {
+        localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(updated));
+      } catch {}
+      return { workoutHistory: updated };
+    });
+  },
+
+  clearPersonalRecords: () => {
+    set({ personalRecords: [] });
+    try {
+      localStorage.removeItem(STORAGE_KEY_PRS);
+    } catch {}
+  },
+
+  deletePersonalRecord: (recordId) => {
+    set((state) => {
+      const updated = state.personalRecords.filter((pr) => pr.id !== recordId);
+      try {
+        localStorage.setItem(STORAGE_KEY_PRS, JSON.stringify(updated));
+      } catch {}
+      return { personalRecords: updated };
+    });
+  },
+
+  addPersonalRecord: (pr) => {
+    const newPr: PersonalRecord = {
+      ...pr,
+      id: `pr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+    };
+    set((state) => {
+      const updated = [newPr, ...state.personalRecords];
+      try {
+        localStorage.setItem(STORAGE_KEY_PRS, JSON.stringify(updated));
+      } catch {}
+      return { personalRecords: updated };
+    });
+  },
+
+  resetAllHistoryAndPRs: () => {
+    set({ workoutHistory: [], personalRecords: [] });
+    try {
+      localStorage.removeItem(STORAGE_KEY_HISTORY);
+      localStorage.removeItem(STORAGE_KEY_PRS);
+    } catch {}
+  },
 
   // Custom Workout Plans (Manual Builder)
   customPlans: loadSavedPlans(),
