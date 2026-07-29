@@ -854,18 +854,20 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
   },
 
   deletePlanDay: (planId, dayId) => {
-    set((state) => ({
-      customPlans: state.customPlans.map((plan) => {
+    set((state) => {
+      const updated = state.customPlans.map((plan) => {
         if (plan.id !== planId) return plan;
         const filteredDays = plan.days.filter((d) => d.id !== dayId);
-        return { ...plan, days: filteredDays, daysPerWeek: filteredDays.length };
-      })
-    }));
+        return { ...plan, days: filteredDays, daysPerWeek: filteredDays.length, updatedAt: new Date().toISOString() };
+      });
+      try { localStorage.setItem(STORAGE_KEY_PLANS, JSON.stringify(updated)); } catch {}
+      return { customPlans: updated };
+    });
   },
 
   duplicatePlanDay: (planId, dayId) => {
-    set((state) => ({
-      customPlans: state.customPlans.map((plan) => {
+    set((state) => {
+      const updated = state.customPlans.map((plan) => {
         if (plan.id !== planId) return plan;
         const targetDay = plan.days.find((d) => d.id === dayId);
         if (!targetDay) return plan;
@@ -875,21 +877,25 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
           name: `${targetDay.name} (Copy)`,
           exercises: targetDay.exercises.map((e) => ({ ...e, id: `c_ex_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` }))
         };
-        return { ...plan, days: [...plan.days, duplicatedDay], daysPerWeek: plan.days.length + 1 };
-      })
-    }));
+        return { ...plan, days: [...plan.days, duplicatedDay], daysPerWeek: plan.days.length + 1, updatedAt: new Date().toISOString() };
+      });
+      try { localStorage.setItem(STORAGE_KEY_PLANS, JSON.stringify(updated)); } catch {}
+      return { customPlans: updated };
+    });
   },
 
   reorderPlanDays: (planId, startIndex, endIndex) => {
-    set((state) => ({
-      customPlans: state.customPlans.map((plan) => {
+    set((state) => {
+      const updated = state.customPlans.map((plan) => {
         if (plan.id !== planId) return plan;
         const reordered = Array.from(plan.days);
         const [removed] = reordered.splice(startIndex, 1);
         reordered.splice(endIndex, 0, removed);
-        return { ...plan, days: reordered };
-      })
-    }));
+        return { ...plan, days: reordered, updatedAt: new Date().toISOString() };
+      });
+      try { localStorage.setItem(STORAGE_KEY_PLANS, JSON.stringify(updated)); } catch {}
+      return { customPlans: updated };
+    });
   },
 
   addExerciseToPlanDay: (planId, dayId, exercise) => {
@@ -924,11 +930,12 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
   },
 
   updatePlanExercise: (planId, dayId, exerciseId, updates) => {
-    set((state) => ({
-      customPlans: state.customPlans.map((plan) => {
+    set((state) => {
+      const updated = state.customPlans.map((plan) => {
         if (plan.id !== planId) return plan;
         return {
           ...plan,
+          updatedAt: new Date().toISOString(),
           days: plan.days.map((day) => {
             if (day.id !== dayId) return day;
             return {
@@ -937,16 +944,19 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
             };
           })
         };
-      })
-    }));
+      });
+      try { localStorage.setItem(STORAGE_KEY_PLANS, JSON.stringify(updated)); } catch {}
+      return { customPlans: updated };
+    });
   },
 
   deletePlanExercise: (planId, dayId, exerciseId) => {
-    set((state) => ({
-      customPlans: state.customPlans.map((plan) => {
+    set((state) => {
+      const updated = state.customPlans.map((plan) => {
         if (plan.id !== planId) return plan;
         return {
           ...plan,
+          updatedAt: new Date().toISOString(),
           days: plan.days.map((day) => {
             if (day.id !== dayId) return day;
             return {
@@ -955,16 +965,19 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
             };
           })
         };
-      })
-    }));
+      });
+      try { localStorage.setItem(STORAGE_KEY_PLANS, JSON.stringify(updated)); } catch {}
+      return { customPlans: updated };
+    });
   },
 
   duplicatePlanExercise: (planId, dayId, exerciseId) => {
-    set((state) => ({
-      customPlans: state.customPlans.map((plan) => {
+    set((state) => {
+      const updated = state.customPlans.map((plan) => {
         if (plan.id !== planId) return plan;
         return {
           ...plan,
+          updatedAt: new Date().toISOString(),
           days: plan.days.map((day) => {
             if (day.id !== dayId) return day;
             const targetEx = day.exercises.find((ex) => ex.id === exerciseId);
@@ -976,16 +989,19 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
             return { ...day, exercises: [...day.exercises, duplicatedEx] };
           })
         };
-      })
-    }));
+      });
+      try { localStorage.setItem(STORAGE_KEY_PLANS, JSON.stringify(updated)); } catch {}
+      return { customPlans: updated };
+    });
   },
 
   reorderPlanExercises: (planId, dayId, startIndex, endIndex) => {
-    set((state) => ({
-      customPlans: state.customPlans.map((plan) => {
+    set((state) => {
+      const updated = state.customPlans.map((plan) => {
         if (plan.id !== planId) return plan;
         return {
           ...plan,
+          updatedAt: new Date().toISOString(),
           days: plan.days.map((day) => {
             if (day.id !== dayId) return day;
             const reordered = Array.from(day.exercises);
@@ -994,8 +1010,10 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
             return { ...day, exercises: reordered };
           })
         };
-      })
-    }));
+      });
+      try { localStorage.setItem(STORAGE_KEY_PLANS, JSON.stringify(updated)); } catch {}
+      return { customPlans: updated };
+    });
   },
 
   replacePlanExercise: (planId, dayId, oldExerciseId, newExercise) => {

@@ -19,12 +19,14 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { MetricCard } from '../../components/ui/MetricCard';
 import { BodyMeasurementEntry } from '../../types';
+import { ProgressCharts } from './ProgressCharts';
 
 export const ProgressView: React.FC = () => {
   const personalRecords = useIronPathStore((s) => s.personalRecords);
   const recoveryList = useIronPathStore((s) => s.recoveryList);
   const userProfile = useIronPathStore((s) => s.userProfile);
   const bodyMeasurements = useIronPathStore((s) => s.bodyMeasurements);
+  const workoutHistory = useIronPathStore((s) => s.workoutHistory);
   const addBodyMeasurement = useIronPathStore((s) => s.addBodyMeasurement);
   const deleteBodyMeasurement = useIronPathStore((s) => s.deleteBodyMeasurement);
 
@@ -354,27 +356,74 @@ export const ProgressView: React.FC = () => {
             />
           </div>
 
-          {/* Muscle Volume Distribution vs Target */}
-          <Card className="p-4 sm:p-6 space-y-4">
-            <h3 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-purple-400 shrink-0" />
-              Weekly Muscle Set Volume vs Target
-            </h3>
+          {/* Interactive Progress & Volume Charts */}
+          <ProgressCharts
+            bodyMeasurements={bodyMeasurements}
+            personalRecords={personalRecords}
+            recoveryList={recoveryList}
+            workoutHistory={workoutHistory}
+          />
 
-            <div className="space-y-3">
+          {/* Muscle Volume Distribution vs Target (14 Separate Muscle Groups) */}
+          <Card className="p-4 sm:p-6 space-y-5 bg-zinc-900/90 border-zinc-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-zinc-100 flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-emerald-400 shrink-0" />
+                  Individual Muscle Weekly Set Volume (14 Targeted Groups)
+                </h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Tracks actual working sets completed against Maximal Adaptive Volume (MAV) targets for each distinct muscle group.
+                </p>
+              </div>
+              <Badge variant="emerald" className="self-start sm:self-auto text-[10px] font-bold">
+                {recoveryList.length} Muscles Tracked
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {recoveryList.map((rec) => {
-                const percent = Math.round((rec.weeklySetsDone / rec.targetWeeklySets) * 100);
+                const percent = Math.min(100, Math.round((rec.weeklySetsDone / rec.targetWeeklySets) * 100));
                 return (
-                  <div key={rec.muscle} className="space-y-1.5">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-0.5">
-                      <span className="font-bold text-zinc-200 capitalize">{rec.name}</span>
-                      <span className="text-purple-400 font-semibold">{rec.weeklySetsDone} / {rec.targetWeeklySets} sets ({percent}%)</span>
+                  <div key={rec.muscle} className="p-3.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 space-y-2">
+                    <div className="flex items-center justify-between text-xs gap-2">
+                      <span className="font-bold text-zinc-100 text-sm">{rec.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-mono font-bold text-emerald-400">
+                          {rec.weeklySetsDone} / {rec.targetWeeklySets} sets
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
+                            rec.status === 'optimal'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : rec.status === 'recovering'
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          }`}
+                        >
+                          {rec.status}
+                        </span>
+                      </div>
                     </div>
-                    <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, percent)}%` }}
-                      />
+
+                    {/* Set Progress Bar */}
+                    <div className="space-y-1">
+                      <div className="w-full bg-zinc-800/80 h-2.5 rounded-full overflow-hidden p-0.5">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            percent >= 100
+                              ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                              : percent >= 70
+                              ? 'bg-gradient-to-r from-purple-500 to-emerald-400'
+                              : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                          }`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono">
+                        <span>{percent}% of MAV</span>
+                        <span>Recovery: {rec.recoveryPercentage}%</span>
+                      </div>
                     </div>
                   </div>
                 );

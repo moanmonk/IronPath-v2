@@ -13,7 +13,8 @@ import {
   Sparkles,
   Info,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Clock
 } from 'lucide-react';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
@@ -21,6 +22,7 @@ import { Badge } from '../../components/ui/Badge';
 import { CustomWorkoutPlan, CustomWorkoutDay, CustomWorkoutExercise } from '../../types';
 import { useIronPathStore } from '../../store/useIronPathStore';
 import { ExerciseSwapModal } from './ExerciseSwapModal';
+import { calculateCustomDayDurationMinutes, formatDurationMinutes } from '../../lib/workoutTimeUtils';
 
 interface PlanEditorModalProps {
   isOpen: boolean;
@@ -53,6 +55,15 @@ export const PlanEditorModal: React.FC<PlanEditorModalProps> = ({
   const [goal, setGoal] = useState(plan.goal || 'Muscle Hypertrophy & Density');
   const [notes, setNotes] = useState(plan.notes || '');
   const [daysPerWeek, setDaysPerWeek] = useState(plan.daysPerWeek || plan.days.length || 3);
+
+  // Sync state when plan changes
+  React.useEffect(() => {
+    setTitle(plan.title);
+    setDescription(plan.description || '');
+    setGoal(plan.goal || 'Muscle Hypertrophy & Density');
+    setNotes(plan.notes || '');
+    setDaysPerWeek(plan.daysPerWeek || plan.days.length || 3);
+  }, [plan.id, plan.title, plan.description, plan.goal, plan.notes, plan.daysPerWeek]);
 
   // New Day Inline
   const [isAddingDay, setIsAddingDay] = useState(false);
@@ -245,6 +256,9 @@ export const PlanEditorModal: React.FC<PlanEditorModalProps> = ({
               ) : (
                 plan.days.map((day, dIdx) => {
                   const isExpanded = expandedDayId === day.id;
+                  const dayEstMinutes = calculateCustomDayDurationMinutes(day.exercises);
+                  const totalSets = day.exercises.reduce((acc, ex) => acc + (ex.sets || 0) + (ex.warmupSets || 0), 0);
+
                   return (
                     <div
                       key={day.id}
@@ -261,8 +275,12 @@ export const PlanEditorModal: React.FC<PlanEditorModalProps> = ({
                           </span>
                           <div className="min-w-0">
                             <h5 className="text-sm font-bold text-zinc-100 truncate">{day.name}</h5>
-                            <p className="text-[11px] text-zinc-400 font-mono">
-                              {day.scheduledDay} • {day.exercises.length} Exercises
+                            <p className="text-[11px] text-zinc-400 font-mono flex items-center gap-2 flex-wrap">
+                              <span>{day.scheduledDay} • {day.exercises.length} Ex ({totalSets} Sets)</span>
+                              <span className="text-purple-400 font-bold flex items-center gap-1 shrink-0">
+                                <Clock className="w-3 h-3" />
+                                {formatDurationMinutes(dayEstMinutes)}
+                              </span>
                             </p>
                           </div>
                         </div>
@@ -424,50 +442,141 @@ export const PlanEditorModal: React.FC<PlanEditorModalProps> = ({
                                   </div>
 
                                   {/* Exercise Prescription Parameters Grid */}
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-zinc-800/60">
-                                    <div>
-                                      <label className="block text-[9px] font-bold uppercase text-zinc-500 mb-0.5">Sets</label>
-                                      <input
-                                        type="number"
-                                        min={1}
-                                        max={15}
-                                        value={cEx.sets}
-                                        onChange={(e) => updatePlanExercise(plan.id, day.id, cEx.id, { sets: Math.max(1, parseInt(e.target.value) || 1) })}
-                                        className="w-full px-2 py-1 rounded bg-zinc-950 border border-zinc-800 text-xs font-mono font-bold text-purple-400 focus:outline-none"
-                                      />
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2 border-t border-zinc-800/80">
+                                    <div className="p-2 rounded-xl bg-zinc-950/80 border border-zinc-800/80 flex flex-col justify-between gap-1">
+                                      <label className="text-[10px] font-bold uppercase text-purple-400 tracking-wider">Working Sets</label>
+                                      <div className="flex items-center justify-between gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => updatePlanExercise(plan.id, day.id, cEx.id, { sets: Math.max(1, (cEx.sets || 1) - 1) })}
+                                          className="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center font-bold shrink-0 transition-all active:scale-95"
+                                        >
+                                          -
+                                        </button>
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          max={20}
+                                          value={cEx.sets}
+                                          onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            if (!isNaN(val)) updatePlanExercise(plan.id, day.id, cEx.id, { sets: Math.max(1, val) });
+                                          }}
+                                          className="w-full text-center font-mono font-bold text-xs bg-transparent text-purple-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => updatePlanExercise(plan.id, day.id, cEx.id, { sets: (cEx.sets || 1) + 1 })}
+                                          className="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center font-bold shrink-0 transition-all active:scale-95"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
                                     </div>
 
-                                    <div>
-                                      <label className="block text-[9px] font-bold uppercase text-zinc-500 mb-0.5">Rep Target</label>
+                                    <div className="p-2 rounded-xl bg-zinc-950/80 border border-zinc-800/80 flex flex-col justify-between gap-1">
+                                      <label className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider">Target Reps</label>
                                       <input
                                         type="text"
                                         value={cEx.reps}
                                         onChange={(e) => updatePlanExercise(plan.id, day.id, cEx.id, { reps: e.target.value })}
-                                        className="w-full px-2 py-1 rounded bg-zinc-950 border border-zinc-800 text-xs font-mono font-bold text-zinc-100 focus:outline-none"
+                                        placeholder="e.g. 8-12"
+                                        className="w-full text-center font-mono font-bold text-xs bg-zinc-900 border border-zinc-800 rounded-lg py-1 text-zinc-100 focus:outline-none focus:border-purple-500"
                                       />
+                                      <div className="flex items-center justify-center gap-1 mt-0.5 flex-wrap">
+                                        {['6-8', '8-12', '10-15', '12-15'].map((r) => (
+                                          <button
+                                            key={r}
+                                            type="button"
+                                            onClick={() => updatePlanExercise(plan.id, day.id, cEx.id, { reps: r })}
+                                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-colors ${
+                                              cEx.reps === r
+                                                ? 'bg-purple-600 text-white font-bold'
+                                                : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200'
+                                            }`}
+                                          >
+                                            {r}
+                                          </button>
+                                        ))}
+                                      </div>
                                     </div>
 
-                                    <div>
-                                      <label className="block text-[9px] font-bold uppercase text-zinc-500 mb-0.5">Rest (sec)</label>
-                                      <input
-                                        type="number"
-                                        step={15}
-                                        value={cEx.restSeconds}
-                                        onChange={(e) => updatePlanExercise(plan.id, day.id, cEx.id, { restSeconds: parseInt(e.target.value) || 90 })}
-                                        className="w-full px-2 py-1 rounded bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-100 focus:outline-none"
-                                      />
+                                    <div className="p-2 rounded-xl bg-zinc-950/80 border border-zinc-800/80 flex flex-col justify-between gap-1">
+                                      <label className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider">Rest (sec)</label>
+                                      <div className="flex items-center justify-between gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => updatePlanExercise(plan.id, day.id, cEx.id, { restSeconds: Math.max(15, (cEx.restSeconds || 90) - 15) })}
+                                          className="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center font-bold shrink-0 transition-all active:scale-95"
+                                        >
+                                          -
+                                        </button>
+                                        <span className="font-mono font-bold text-xs text-zinc-200">
+                                          {cEx.restSeconds || 90}s
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => updatePlanExercise(plan.id, day.id, cEx.id, { restSeconds: (cEx.restSeconds || 90) + 15 })}
+                                          className="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center font-bold shrink-0 transition-all active:scale-95"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                      <div className="flex items-center justify-center gap-1 mt-0.5">
+                                        {[60, 90, 120, 180].map((sec) => (
+                                          <button
+                                            key={sec}
+                                            type="button"
+                                            onClick={() => updatePlanExercise(plan.id, day.id, cEx.id, { restSeconds: sec })}
+                                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-colors ${
+                                              cEx.restSeconds === sec
+                                                ? 'bg-purple-600 text-white font-bold'
+                                                : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200'
+                                            }`}
+                                          >
+                                            {sec}s
+                                          </button>
+                                        ))}
+                                      </div>
                                     </div>
 
-                                    <div>
-                                      <label className="block text-[9px] font-bold uppercase text-zinc-500 mb-0.5">Target RIR</label>
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        max={4}
-                                        value={cEx.targetRIR ?? 1}
-                                        onChange={(e) => updatePlanExercise(plan.id, day.id, cEx.id, { targetRIR: parseInt(e.target.value) ?? 1 })}
-                                        className="w-full px-2 py-1 rounded bg-zinc-950 border border-zinc-800 text-xs font-mono font-bold text-zinc-100 focus:outline-none"
-                                      />
+                                    <div className="p-2 rounded-xl bg-zinc-950/80 border border-zinc-800/80 flex flex-col justify-between gap-1">
+                                      <label className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider">Target RIR</label>
+                                      <div className="flex items-center justify-between gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => updatePlanExercise(plan.id, day.id, cEx.id, { targetRIR: Math.max(0, (cEx.targetRIR ?? 1) - 1) })}
+                                          className="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center font-bold shrink-0 transition-all active:scale-95"
+                                        >
+                                          -
+                                        </button>
+                                        <span className="font-mono font-bold text-xs text-purple-300">
+                                          {(cEx.targetRIR ?? 1) === 0 ? '0 (Failure)' : `RIR ${cEx.targetRIR ?? 1}`}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => updatePlanExercise(plan.id, day.id, cEx.id, { targetRIR: Math.min(4, (cEx.targetRIR ?? 1) + 1) })}
+                                          className="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center font-bold shrink-0 transition-all active:scale-95"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                      <div className="flex items-center justify-center gap-1 mt-0.5">
+                                        {[0, 1, 2, 3].map((rir) => (
+                                          <button
+                                            key={rir}
+                                            type="button"
+                                            onClick={() => updatePlanExercise(plan.id, day.id, cEx.id, { targetRIR: rir })}
+                                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-colors ${
+                                              (cEx.targetRIR ?? 1) === rir
+                                                ? 'bg-purple-600 text-white font-bold'
+                                                : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200'
+                                            }`}
+                                          >
+                                            {rir === 0 ? 'Failure' : `RIR ${rir}`}
+                                          </button>
+                                        ))}
+                                      </div>
                                     </div>
                                   </div>
 

@@ -38,6 +38,7 @@ import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Exercise, MuscleGroup, CustomWorkoutPlan } from '../../types';
 import { PlanEditorModal } from '../programs/PlanEditorModal';
 import { PlanJSONModal } from '../programs/PlanJSONModal';
+import { calculateCustomDayDurationMinutes, formatDurationMinutes } from '../../lib/workoutTimeUtils';
 
 export const WorkoutPlannerView: React.FC = () => {
   const customPlans = useIronPathStore((s) => s.customPlans);
@@ -73,7 +74,8 @@ export const WorkoutPlannerView: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<'active' | 'saved' | 'all'>('active');
 
   // Plan Editor Modal State
-  const [editingPlan, setEditingPlan] = useState<CustomWorkoutPlan | null>(null);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const editingPlan = customPlans.find((p) => p.id === editingPlanId) || null;
 
   // New Plan Modal State
   const [isNewPlanModalOpen, setIsNewPlanModalOpen] = useState(false);
@@ -127,7 +129,7 @@ export const WorkoutPlannerView: React.FC = () => {
     setNewPlanTitle('');
     setNewPlanDescription('');
     setIsNewPlanModalOpen(false);
-    setEditingPlan(plan);
+    setEditingPlanId(plan.id);
   };
 
   const handleCreateCustomExerciseSubmit = (e: React.FormEvent) => {
@@ -299,13 +301,13 @@ export const WorkoutPlannerView: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap shrink-0 w-full lg:w-auto justify-end">
+                <div className="flex items-center gap-2 flex-wrap shrink-0 w-full lg:w-auto justify-center lg:justify-end">
                   <Button
                     variant="purple"
                     size="md"
-                    onClick={() => setEditingPlan(activePlan)}
+                    onClick={() => setEditingPlanId(activePlan.id)}
                     leftIcon={<Edit3 className="w-4 h-4" />}
-                    className="font-bold bg-purple-600 hover:bg-purple-500 text-white"
+                    className="font-bold bg-purple-600 hover:bg-purple-500 text-white min-h-[44px] justify-center"
                   >
                     Edit Blueprint
                   </Button>
@@ -345,18 +347,23 @@ export const WorkoutPlannerView: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {activePlan.days.map((day, dIdx) => (
-                    <div
-                      key={day.id}
-                      className="p-4 rounded-2xl bg-zinc-950 border border-zinc-800/90 space-y-3 hover:border-purple-500/40 transition-all flex flex-col justify-between"
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-mono font-bold text-purple-400 text-[11px] uppercase">
-                            Day {dIdx + 1} • {day.scheduledDay}
-                          </span>
-                          <span className="text-[10px] text-zinc-500 font-mono">{day.exercises.length} Exercises</span>
-                        </div>
+                  {activePlan.days.map((day, dIdx) => {
+                    const dayEstMins = calculateCustomDayDurationMinutes(day.exercises);
+                    return (
+                      <div
+                        key={day.id}
+                        className="p-4 rounded-2xl bg-zinc-950 border border-zinc-800/90 space-y-3 hover:border-purple-500/40 transition-all flex flex-col justify-between"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-mono font-bold text-purple-400 text-[11px] uppercase">
+                              Day {dIdx + 1} • {day.scheduledDay}
+                            </span>
+                            <span className="text-[10px] text-purple-300 font-mono font-bold bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20 flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-purple-400" />
+                              {formatDurationMinutes(dayEstMins)}
+                            </span>
+                          </div>
 
                         <h5 className="text-sm font-bold text-zinc-100">{day.name}</h5>
 
@@ -389,7 +396,8 @@ export const WorkoutPlannerView: React.FC = () => {
                         Start {day.name}
                       </Button>
                     </div>
-                  ))}
+                  );
+                })}
                 </div>
               </div>
 
@@ -482,7 +490,7 @@ export const WorkoutPlannerView: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setEditingPlan(plan)}
+                            onClick={() => setEditingPlanId(plan.id)}
                             leftIcon={<Edit3 className="w-3.5 h-3.5" />}
                           >
                             Edit
@@ -627,7 +635,7 @@ export const WorkoutPlannerView: React.FC = () => {
       {editingPlan && (
         <PlanEditorModal
           isOpen={!!editingPlan}
-          onClose={() => setEditingPlan(null)}
+          onClose={() => setEditingPlanId(null)}
           plan={editingPlan}
           onOpenExerciseSelector={(dayId) => {
             setTargetPlanIdForEx(editingPlan.id);
