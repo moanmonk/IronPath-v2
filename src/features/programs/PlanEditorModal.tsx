@@ -17,7 +17,8 @@ import {
   Clock,
   Printer,
   FileJson,
-  Share2
+  Share2,
+  FileText
 } from 'lucide-react';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
@@ -461,7 +462,46 @@ export const PlanEditorModal: React.FC<PlanEditorModalProps> = ({
                                   </div>
 
                                   {/* Exercise Prescription Parameters Grid */}
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2 border-t border-zinc-800/80">
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-2 border-t border-zinc-800/80">
+                                    <div className="p-2 rounded-xl bg-zinc-950/80 border border-zinc-800/80 flex flex-col justify-between gap-1">
+                                      <label className="text-[10px] font-bold uppercase text-amber-400 tracking-wider">Warmup Sets</label>
+                                      <div className="flex items-center justify-between gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => updatePlanExercise(plan.id, day.id, cEx.id, { warmupSets: Math.max(0, (cEx.warmupSets || 0) - 1) })}
+                                          className="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center font-bold shrink-0 transition-all active:scale-95"
+                                        >
+                                          -
+                                        </button>
+                                        <span className="font-mono font-bold text-xs text-amber-300">
+                                          {(cEx.warmupSets || 0)}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => updatePlanExercise(plan.id, day.id, cEx.id, { warmupSets: (cEx.warmupSets || 0) + 1 })}
+                                          className="w-7 h-7 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center font-bold shrink-0 transition-all active:scale-95"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                      <div className="flex items-center justify-center gap-1 mt-0.5">
+                                        {[0, 1, 2, 3].map((w) => (
+                                          <button
+                                            key={w}
+                                            type="button"
+                                            onClick={() => updatePlanExercise(plan.id, day.id, cEx.id, { warmupSets: w })}
+                                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-colors ${
+                                              (cEx.warmupSets || 0) === w
+                                                ? 'bg-amber-600 text-white font-bold'
+                                                : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200'
+                                            }`}
+                                          >
+                                            {w}w
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+
                                     <div className="p-2 rounded-xl bg-zinc-950/80 border border-zinc-800/80 flex flex-col justify-between gap-1">
                                       <label className="text-[10px] font-bold uppercase text-purple-400 tracking-wider">Working Sets</label>
                                       <div className="flex items-center justify-between gap-1">
@@ -592,21 +632,24 @@ export const PlanEditorModal: React.FC<PlanEditorModalProps> = ({
                                                 : 'bg-zinc-800/80 text-zinc-400 hover:text-zinc-200'
                                             }`}
                                           >
-                                            {rir === 0 ? 'Failure' : `RIR ${rir}`}
+                                            {rir === 0 ? 'Fail' : `RIR ${rir}`}
                                           </button>
                                         ))}
                                       </div>
                                     </div>
                                   </div>
 
-                                  {/* Cues / Execution Note Input */}
-                                  <div>
+                                  {/* Cues / Exercise Plan Notes Input */}
+                                  <div className="pt-2 border-t border-zinc-800/80 space-y-1">
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                                      <FileText className="w-3 h-3 text-amber-400" /> Exercise Notes / Setup Cues (Visible in Live Workout)
+                                    </label>
                                     <input
                                       type="text"
-                                      placeholder="Custom execution cue (e.g., Pause 2s at peak stretch)..."
+                                      placeholder="e.g. Seat height 4, 3-sec pause at peak stretch, cable pin 6..."
                                       value={cEx.notes || ''}
                                       onChange={(e) => updatePlanExercise(plan.id, day.id, cEx.id, { notes: e.target.value })}
-                                      className="w-full px-2.5 py-1 rounded bg-zinc-950/80 border border-zinc-800/80 text-[11px] text-zinc-300 focus:outline-none focus:border-purple-500"
+                                      className="w-full px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800/80 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-purple-500 font-medium"
                                     />
                                   </div>
                                 </div>

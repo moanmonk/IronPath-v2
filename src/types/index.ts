@@ -124,6 +124,7 @@ export interface PlannedExercise {
   notes?: string;
   supersetGroup?: string;
   isOptional?: boolean;
+  restSeconds?: number;
 }
 
 export interface WorkoutSession {

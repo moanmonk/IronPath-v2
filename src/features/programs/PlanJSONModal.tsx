@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Download, Copy, Check, FileJson, Upload, AlertCircle, Sparkles, FileText, Printer, MessageSquare } from 'lucide-react';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
-import { CustomWorkoutPlan } from '../../types';
+import { CustomWorkoutPlan, Exercise } from '../../types';
 import { useIronPathStore } from '../../store/useIronPathStore';
+import { normalizeMuscleGroup } from '../../lib/muscleUtils';
 
 interface PlanJSONModalProps {
   isOpen: boolean;
@@ -419,25 +420,46 @@ export const PlanJSONModal: React.FC<PlanJSONModalProps> = ({
 
       // Overwrite days if structured
       if (parsed.days.length > 0) {
-        useIronPathStore.getState().updateCustomPlan(newPlan.id, {
+        const store = useIronPathStore.getState();
+        store.updateCustomPlan(newPlan.id, {
           days: parsed.days.map((d: any, dIdx: number) => ({
             id: `day_${Date.now()}_${dIdx}`,
             name: d.name || `Day ${dIdx + 1}`,
             focus: d.focus || 'Hypertrophy Focus',
             scheduledDay: d.scheduledDay || 'Unscheduled',
             exercises: Array.isArray(d.exercises)
-              ? d.exercises.map((e: any, eIdx: number) => ({
-                  id: `c_ex_${Date.now()}_${dIdx}_${eIdx}`,
-                  exerciseId: e.exerciseId || `ex_imp_${Date.now()}_${dIdx}_${eIdx}`,
-                  name: e.name || 'Custom Exercise',
-                  equipment: e.equipment || 'dumbbell',
-                  sets: e.sets || 3,
-                  reps: e.reps || '8-12',
-                  restSeconds: e.restSeconds || 120,
-                  primaryMuscle: e.primaryMuscle || 'chest',
-                  notes: e.notes || '',
-                  targetRIR: e.targetRIR ?? 1
-                }))
+              ? d.exercises.map((e: any, eIdx: number) => {
+                  const normMuscle = normalizeMuscleGroup(e.primaryMuscle, e.name);
+                  const exName = e.name || 'Custom Exercise';
+                  const exId = e.exerciseId || `ex_imp_${Date.now()}_${dIdx}_${eIdx}`;
+                  
+                  // Also register into library
+                  store.addCustomExerciseToLibrary({
+                    id: exId,
+                    name: exName,
+                    primaryMuscle: normMuscle,
+                    secondaryMuscles: [],
+                    equipment: e.equipment || 'dumbbell',
+                    category: 'compound',
+                    hypertrophyTier: 'A Tier',
+                    instructions: ['Controlled execution with focus on target muscle.'],
+                    cue: e.notes || '',
+                    defaultRIR: e.targetRIR ?? 1
+                  });
+
+                  return {
+                    id: `c_ex_${Date.now()}_${dIdx}_${eIdx}`,
+                    exerciseId: exId,
+                    name: exName,
+                    equipment: e.equipment || 'dumbbell',
+                    sets: e.sets || 3,
+                    reps: e.reps || '8-12',
+                    restSeconds: e.restSeconds || 120,
+                    primaryMuscle: normMuscle,
+                    notes: e.notes || '',
+                    targetRIR: e.targetRIR ?? 1
+                  };
+                })
               : []
           }))
         });

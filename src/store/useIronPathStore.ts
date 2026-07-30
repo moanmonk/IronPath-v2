@@ -24,6 +24,8 @@ import {
   EXERCISES_LIBRARY,
   INITIAL_BODY_MEASUREMENTS
 } from '../data/mockData';
+import { normalizeMuscleGroup } from '../lib/muscleUtils';
+import { playTimerCompletionBeep } from '../lib/audioUtils';
 
 export const getOrBuildExercise = (
   library: Exercise[],
@@ -34,13 +36,23 @@ export const getOrBuildExercise = (
   // 1. Exact ID match
   if (cEx.exerciseId) {
     const byId = library.find((e) => e.id === cEx.exerciseId);
-    if (byId) return byId;
+    if (byId) {
+      return {
+        ...byId,
+        primaryMuscle: normalizeMuscleGroup(byId.primaryMuscle, byId.name)
+      };
+    }
   }
 
   // 2. Exact name match
   if (nameTrim) {
     const byName = library.find((e) => e.name.trim().toLowerCase() === nameTrim);
-    if (byName) return byName;
+    if (byName) {
+      return {
+        ...byName,
+        primaryMuscle: normalizeMuscleGroup(byName.primaryMuscle, byName.name)
+      };
+    }
   }
 
   // 3. Clean name match (ignoring parenthetical details)
@@ -51,7 +63,12 @@ export const getOrBuildExercise = (
         const eClean = e.name.trim().toLowerCase().replace(/\([^)]*\)/g, '').trim();
         return eClean === cleanNameTrim || eClean.includes(cleanNameTrim) || cleanNameTrim.includes(eClean);
       });
-      if (byClean) return byClean;
+      if (byClean) {
+        return {
+          ...byClean,
+          primaryMuscle: normalizeMuscleGroup(byClean.primaryMuscle, byClean.name)
+        };
+      }
     }
   }
 
@@ -61,14 +78,19 @@ export const getOrBuildExercise = (
       const eName = e.name.trim().toLowerCase();
       return eName.includes(nameTrim) || nameTrim.includes(eName);
     });
-    if (byPartial) return byPartial;
+    if (byPartial) {
+      return {
+        ...byPartial,
+        primaryMuscle: normalizeMuscleGroup(byPartial.primaryMuscle, byPartial.name)
+      };
+    }
   }
 
   // 5. Fallback: dynamically construct a unique Exercise object preserving original name, muscle, & equipment
   return {
     id: cEx.exerciseId || `ex_custom_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     name: cEx.name || 'Custom Exercise',
-    primaryMuscle: cEx.primaryMuscle || 'chest',
+    primaryMuscle: normalizeMuscleGroup(cEx.primaryMuscle, cEx.name),
     secondaryMuscles: [],
     equipment: (cEx.equipment as any) || 'dumbbell',
     category: 'compound',
@@ -83,6 +105,7 @@ interface RestTimerState {
   isRunning: boolean;
   secondsRemaining: number;
   totalDuration: number;
+  targetEndTime?: number;
 }
 
 interface IronPathState {
@@ -136,7 +159,7 @@ interface IronPathState {
   finishWorkout: () => void;
   toggleSetCompleted: (exerciseId: string, setId: string) => void;
   updateSetData: (exerciseId: string, setId: string, updates: Partial<ExerciseSet>) => void;
-  addSetToExercise: (exerciseId: string) => void;
+  addSetToExercise: (exerciseId: string, setType?: 'working' | 'warmup') => void;
   removeSetFromExercise: (exerciseId: string, setId: string) => void;
   addExerciseToWorkout: (exercise: Exercise) => void;
   removeExerciseFromWorkout: (exerciseId: string) => void;
@@ -177,6 +200,23 @@ const STORAGE_KEY_PLANS = 'ironpath_custom_plans';
 const STORAGE_KEY_MEASUREMENTS = 'ironpath_body_measurements';
 const STORAGE_KEY_HISTORY = 'ironpath_workout_history';
 const STORAGE_KEY_PRS = 'ironpath_personal_records';
+const STORAGE_KEY_CUSTOM_EXERCISES = 'ironpath_custom_exercises';
+
+const loadSavedCustomExercises = (): Exercise[] => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_CUSTOM_EXERCISES);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed.map((ex: Exercise) => ({
+          ...ex,
+          primaryMuscle: normalizeMuscleGroup(ex.primaryMuscle, ex.name)
+        }));
+      }
+    }
+  } catch {}
+  return [];
+};
 
 const INITIAL_DEFAULT_PLANS: CustomWorkoutPlan[] = [
   {
@@ -276,7 +316,22 @@ const loadSavedPlans = (): CustomWorkoutPlan[] => {
     const saved = localStorage.getItem(STORAGE_KEY_PLANS);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((plan: CustomWorkoutPlan) => ({
+          ...plan,
+          days: Array.isArray(plan.days)
+            ? plan.days.map((day) => ({
+                ...day,
+                exercises: Array.isArray(day.exercises)
+                  ? day.exercises.map((ex) => ({
+                      ...ex,
+                      primaryMuscle: normalizeMuscleGroup(ex.primaryMuscle, ex.name)
+                    }))
+                  : []
+              }))
+            : []
+        }));
+      }
     }
   } catch {
     // fallback
@@ -492,7 +547,8 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
           const newCompleted = !s.completed;
           // Trigger rest timer on completing a working set!
           if (newCompleted) {
-            get().startRestTimer(state.userProfile.defaultRestTimerSeconds);
+            const exerciseRest = pe.restSeconds || state.userProfile.defaultRestTimerSeconds || 120;
+            get().startRestTimer(exerciseRest);
           }
           return { ...s, completed: newCompleted };
         });
@@ -538,23 +594,58 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
     });
   },
 
-  addSetToExercise: (exerciseId) => {
+  addSetToExercise: (exerciseId, setType = 'working') => {
     set((state) => {
       const exercises = state.activeWorkout.exercises.map((pe) => {
         if (pe.id !== exerciseId) return pe;
+
+        let lastWarmupIdx = -1;
+        for (let i = 0; i < pe.sets.length; i++) {
+          if (pe.sets[i].type === 'warmup') {
+            lastWarmupIdx = i;
+          }
+        }
+
+        const firstWorkingSet = pe.sets.find((s) => s.type === 'working');
         const lastSet = pe.sets[pe.sets.length - 1];
+
+        const defaultWeight = setType === 'warmup'
+          ? (firstWorkingSet ? Math.round(firstWorkingSet.weight * 0.5) || 15 : (lastSet ? Math.round(lastSet.weight * 0.5) || 15 : 15))
+          : (lastSet ? lastSet.weight : 20);
+
         const newSet: ExerciseSet = {
-          id: `set_${Date.now()}`,
-          setNumber: pe.sets.length + 1,
-          type: 'working',
-          weight: lastSet ? lastSet.weight : 20,
-          reps: lastSet ? lastSet.reps : 10,
-          rir: 1,
+          id: `set_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          setNumber: 1, // temporary, will renumber below
+          type: setType,
+          weight: defaultWeight,
+          reps: setType === 'warmup' ? 12 : (lastSet ? lastSet.reps : 10),
+          rir: setType === 'warmup' ? 3 : 1,
           completed: false,
           previousWeight: lastSet ? lastSet.weight : 20,
           previousReps: lastSet ? lastSet.reps : 10
         };
-        return { ...pe, sets: [...pe.sets, newSet] };
+
+        let updatedSets: ExerciseSet[] = [];
+        if (setType === 'warmup') {
+          if (lastWarmupIdx >= 0) {
+            // Place right after the last existing warmup set
+            updatedSets = [
+              ...pe.sets.slice(0, lastWarmupIdx + 1),
+              newSet,
+              ...pe.sets.slice(lastWarmupIdx + 1)
+            ];
+          } else {
+            // Place at the top before working sets
+            updatedSets = [newSet, ...pe.sets];
+          }
+        } else {
+          // Append working set at the end
+          updatedSets = [...pe.sets, newSet];
+        }
+
+        const renumbered = updatedSets.map((s, idx) => ({ ...s, setNumber: idx + 1 }));
+
+        return { ...pe, sets: renumbered };
       });
 
       const updatedWorkout = { ...state.activeWorkout, exercises };
@@ -590,6 +681,7 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
       const newPlanned: PlannedExercise = {
         id: `pe_${Date.now()}`,
         exercise,
+        restSeconds: state.userProfile.defaultRestTimerSeconds || 120,
         sets: [
           {
             id: `set_${Date.now()}_1`,
@@ -668,37 +760,51 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
   },
 
   startRestTimer: (duration = 120) => {
+    const targetEndTime = Date.now() + duration * 1000;
     set({
       restTimer: {
         isRunning: true,
         secondsRemaining: duration,
-        totalDuration: duration
+        totalDuration: duration,
+        targetEndTime
       }
     });
   },
 
   stopRestTimer: () => {
     set((state) => ({
-      restTimer: { ...state.restTimer, isRunning: false }
+      restTimer: { ...state.restTimer, isRunning: false, targetEndTime: undefined }
     }));
   },
 
   tickRestTimer: () => {
     set((state) => {
       if (!state.restTimer.isRunning) return state;
-      if (state.restTimer.secondsRemaining <= 1) {
+
+      let remainingSecs = state.restTimer.secondsRemaining - 1;
+      if (state.restTimer.targetEndTime) {
+        const remainingMs = state.restTimer.targetEndTime - Date.now();
+        remainingSecs = Math.max(0, Math.ceil(remainingMs / 1000));
+      }
+
+      if (remainingSecs <= 0) {
+        if (state.userProfile.soundAlerts !== false) {
+          playTimerCompletionBeep();
+        }
         return {
           restTimer: {
             ...state.restTimer,
             isRunning: false,
-            secondsRemaining: 0
+            secondsRemaining: 0,
+            targetEndTime: undefined
           }
         };
       }
+
       return {
         restTimer: {
           ...state.restTimer,
-          secondsRemaining: state.restTimer.secondsRemaining - 1
+          secondsRemaining: remainingSecs
         }
       };
     });
@@ -767,7 +873,7 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
   // Custom Workout Plans (Manual Builder)
   customPlans: loadSavedPlans(),
   activePlanId: loadSavedPlans().find((p) => p.status === 'active')?.id || loadSavedPlans()[0]?.id || null,
-  exercisesLibrary: EXERCISES_LIBRARY,
+  exercisesLibrary: [...loadSavedCustomExercises(), ...EXERCISES_LIBRARY],
 
   createCustomPlan: (title, description, daysPerWeek = 3, goal, notes) => {
     const newPlan: CustomWorkoutPlan = {
@@ -953,9 +1059,19 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
   },
 
   addCustomExerciseToLibrary: (exercise) => {
-    set((state) => ({
-      exercisesLibrary: [exercise, ...state.exercisesLibrary]
-    }));
+    const normEx: Exercise = {
+      ...exercise,
+      primaryMuscle: normalizeMuscleGroup(exercise.primaryMuscle, exercise.name)
+    };
+    set((state) => {
+      const filtered = state.exercisesLibrary.filter((e) => e.id !== normEx.id && e.name.toLowerCase() !== normEx.name.toLowerCase());
+      const updatedLib = [normEx, ...filtered];
+      try {
+        const customOnly = updatedLib.filter((e) => e.id.startsWith('ex_user_') || e.id.startsWith('ex_custom_') || e.id.startsWith('c_ex_'));
+        localStorage.setItem(STORAGE_KEY_CUSTOM_EXERCISES, JSON.stringify(customOnly));
+      } catch {}
+      return { exercisesLibrary: updatedLib };
+    });
   },
 
   addDayToPlan: (planId, dayName, scheduledDay = 'Unscheduled') => {
@@ -1037,6 +1153,14 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
   },
 
   addExerciseToPlanDay: (planId, dayId, exercise) => {
+    const normMuscle = normalizeMuscleGroup(exercise.primaryMuscle, exercise.name);
+    
+    // Ensure custom/new exercise gets added to the library state and storage
+    get().addCustomExerciseToLibrary({
+      ...exercise,
+      primaryMuscle: normMuscle
+    });
+
     set((state) => {
       const updated = state.customPlans.map((plan) => {
         if (plan.id !== planId) return plan;
@@ -1046,14 +1170,14 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
           days: plan.days.map((day) => {
             if (day.id !== dayId) return day;
             const newPlanExercise: CustomWorkoutExercise = {
-              id: `c_ex_${Date.now()}`,
+              id: `c_ex_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
               exerciseId: exercise.id,
               name: exercise.name,
               equipment: exercise.equipment,
               sets: 3,
               reps: exercise.recommendedHypertrophyRange || '8-12',
               restSeconds: 120,
-              primaryMuscle: exercise.primaryMuscle,
+              primaryMuscle: normMuscle,
               notes: exercise.cue,
               warmupSets: 1,
               targetRIR: exercise.defaultRIR || 1
@@ -1189,22 +1313,41 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
     const activeWorkoutExercises: PlannedExercise[] = day.exercises.map((cEx, idx) => {
       const libraryEx = getOrBuildExercise(get().exercisesLibrary, cEx);
       
-      const parsedSets: ExerciseSet[] = Array.from({ length: cEx.sets || 3 }, (_, sIdx) => ({
-        id: `set_${Date.now()}_${idx}_${sIdx}`,
-        setNumber: sIdx + 1,
-        type: 'working',
-        weight: 30,
-        reps: parseInt((cEx.reps || '10').split('-')[0]) || 10,
-        rir: cEx.targetRIR ?? 1,
-        completed: false
-      }));
+      const warmupCount = cEx.warmupSets || 0;
+      const workingCount = cEx.sets || 3;
+      const parsedSets: ExerciseSet[] = [];
+
+      for (let w = 0; w < warmupCount; w++) {
+        parsedSets.push({
+          id: `set_w_${Date.now()}_${idx}_${w}`,
+          setNumber: w + 1,
+          type: 'warmup',
+          weight: 15,
+          reps: 12,
+          rir: 3,
+          completed: false
+        });
+      }
+
+      for (let s = 0; s < workingCount; s++) {
+        parsedSets.push({
+          id: `set_${Date.now()}_${idx}_${s}`,
+          setNumber: warmupCount + s + 1,
+          type: 'working',
+          weight: 30,
+          reps: parseInt((cEx.reps || '10').split('-')[0]) || 10,
+          rir: cEx.targetRIR ?? 1,
+          completed: false
+        });
+      }
 
       return {
         id: `pe_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
         exercise: libraryEx,
         sets: parsedSets,
-        notes: cEx.notes,
-        isOptional: cEx.optional
+        notes: cEx.notes || libraryEx.notes || libraryEx.cue,
+        isOptional: cEx.optional,
+        restSeconds: cEx.restSeconds || 120
       };
     });
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dumbbell, Target } from 'lucide-react';
 import { LiveWorkoutView } from './LiveWorkoutView';
 import { WorkoutPlannerView } from './WorkoutPlannerView';
@@ -9,6 +9,12 @@ export const TrainView: React.FC = () => {
   const [activeSubMode, setActiveSubMode] = useState<'live' | 'planner'>(
     isWorkoutInProgress ? 'live' : 'planner'
   );
+
+  useEffect(() => {
+    if (isWorkoutInProgress) {
+      setActiveSubMode('live');
+    }
+  }, [isWorkoutInProgress]);
 
   return (
     <div className="space-y-6">
@@ -46,12 +52,16 @@ export const TrainView: React.FC = () => {
             }`}
           >
             <Target className="w-4 h-4 shrink-0" />
-            <span className="truncate">Planner</span>
+            <span className="truncate">Planner / Start Day</span>
           </button>
         </div>
       </div>
 
-      {activeSubMode === 'live' ? <LiveWorkoutView /> : <WorkoutPlannerView />}
+      {activeSubMode === 'live' ? (
+        <LiveWorkoutView onFinishAndReturnToPlanner={() => setActiveSubMode('planner')} />
+      ) : (
+        <WorkoutPlannerView />
+      )}
     </div>
   );
 };

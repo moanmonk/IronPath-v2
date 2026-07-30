@@ -16,9 +16,25 @@ export const RestTimerBanner: React.FC = () => {
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (restTimer.isRunning) {
+      tickRestTimer(); // immediate initial tick check
       interval = setInterval(() => {
         tickRestTimer();
       }, 1000);
+
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          tickRestTimer();
+        }
+      };
+
+      window.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('focus', handleVisibilityChange);
+
+      return () => {
+        if (interval) clearInterval(interval);
+        window.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('focus', handleVisibilityChange);
+      };
     }
     return () => {
       if (interval) clearInterval(interval);

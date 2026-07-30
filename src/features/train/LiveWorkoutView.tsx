@@ -16,7 +16,9 @@ import {
   X,
   AlertCircle,
   Flame,
-  Volume2
+  Volume2,
+  Trash2,
+  Calendar
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useIronPathStore } from '../../store/useIronPathStore';
@@ -27,11 +29,17 @@ import { BottomSheet } from '../../components/ui/BottomSheet';
 import { ExerciseSet } from '../../types';
 import { calculateActiveWorkoutDurationMinutes, formatDurationMinutes } from '../../lib/workoutTimeUtils';
 
-export const LiveWorkoutView: React.FC = () => {
+interface LiveWorkoutViewProps {
+  onFinishAndReturnToPlanner?: () => void;
+}
+
+export const LiveWorkoutView: React.FC<LiveWorkoutViewProps> = ({ onFinishAndReturnToPlanner }) => {
   const activeWorkout = useIronPathStore((s) => s.activeWorkout);
+  const isWorkoutInProgress = useIronPathStore((s) => s.isWorkoutInProgress);
   const toggleSetCompleted = useIronPathStore((s) => s.toggleSetCompleted);
   const updateSetData = useIronPathStore((s) => s.updateSetData);
   const addSetToExercise = useIronPathStore((s) => s.addSetToExercise);
+  const removeSetFromExercise = useIronPathStore((s) => s.removeSetFromExercise);
   const finishWorkout = useIronPathStore((s) => s.finishWorkout);
   const setWorkoutNote = useIronPathStore((s) => s.setWorkoutNote);
 
@@ -69,12 +77,32 @@ export const LiveWorkoutView: React.FC = () => {
     });
   };
 
-  if (!currentExercise) {
+  if (activeWorkout.completed || !isWorkoutInProgress || !currentExercise) {
     return (
-      <Card className="p-8 text-center space-y-4">
-        <AlertCircle className="w-12 h-12 text-purple-400 mx-auto" />
-        <h3 className="text-xl font-bold text-zinc-100">No Exercises Scheduled in Active Session</h3>
-        <p className="text-sm text-zinc-400">Please switch to Planner Mode to add exercises or load a workout template.</p>
+      <Card className="p-8 text-center space-y-6 max-w-xl mx-auto border-emerald-500/30 bg-zinc-900/95 backdrop-blur-xl animate-fadeIn">
+        <div className="w-16 h-16 rounded-3xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/30 shadow-xl shadow-emerald-500/10">
+          <Award className="w-8 h-8" />
+        </div>
+
+        <div className="space-y-2">
+          <Badge variant="emerald" className="uppercase tracking-widest text-[10px] font-bold">Workout Completed</Badge>
+          <h3 className="text-2xl font-black text-zinc-100">{activeWorkout.title || 'Live Session'}</h3>
+          <p className="text-xs text-zinc-400 leading-relaxed max-w-sm mx-auto">
+            Session data and exercise volume have been logged in your profile history. Select a training day below to start your next live session.
+          </p>
+        </div>
+
+        <div className="pt-4 border-t border-zinc-800 flex flex-col gap-3">
+          <Button
+            variant="emerald"
+            size="lg"
+            onClick={() => onFinishAndReturnToPlanner?.()}
+            leftIcon={<Calendar className="w-5 h-5 text-zinc-950" />}
+            className="w-full font-black py-3.5 shadow-xl shadow-emerald-500/20 text-sm"
+          >
+            Start Next Training Day / View Days
+          </Button>
+        </div>
       </Card>
     );
   }
@@ -119,6 +147,7 @@ export const LiveWorkoutView: React.FC = () => {
             onClick={() => {
               triggerConfetti();
               finishWorkout();
+              onFinishAndReturnToPlanner?.();
             }}
           >
             Finish Workout
@@ -159,6 +188,9 @@ export const LiveWorkoutView: React.FC = () => {
               <Badge variant="emerald">{currentExercise.exercise.primaryMuscle.replace('_', ' ').toUpperCase()}</Badge>
               <Badge variant="purple">{currentExercise.exercise.hypertrophyTier}</Badge>
               <Badge variant="zinc" className="text-[10px]">{currentExercise.exercise.equipment}</Badge>
+              <Badge variant="zinc" className="text-[10px] text-amber-300 bg-amber-500/10 border-amber-500/30">
+                ⏱️ Rest: {currentExercise.restSeconds || 120}s
+              </Badge>
             </div>
             <h3 className="text-xl sm:text-3xl font-black text-zinc-100 tracking-tight leading-snug break-words">
               {currentExercise.exercise.name}
@@ -179,6 +211,17 @@ export const LiveWorkoutView: React.FC = () => {
           </Button>
         </div>
 
+        {/* Exercise Plan Notes / Custom Cues Banner */}
+        {(currentExercise.notes || currentExercise.exercise.notes) && (
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-3 shadow-inner">
+            <FileText className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="space-y-0.5 flex-1">
+              <span className="font-bold text-amber-300 uppercase tracking-wider text-[10px] block">Exercise Plan Notes / Setup Cues</span>
+              <p className="leading-relaxed font-medium text-amber-100 whitespace-pre-wrap">{currentExercise.notes || currentExercise.exercise.notes}</p>
+            </div>
+          </div>
+        )}
+
         {/* Set Logger Cards */}
         <div className="space-y-3">
           <div className="hidden sm:grid grid-cols-12 text-xs font-bold uppercase tracking-wider text-zinc-500 px-3">
@@ -192,6 +235,8 @@ export const LiveWorkoutView: React.FC = () => {
           <div className="space-y-3">
             {currentExercise.sets.map((set) => {
               const isDone = set.completed;
+              const isWarmup = set.type === 'warmup';
+
               return (
                 <motion.div
                   key={set.id}
@@ -199,6 +244,8 @@ export const LiveWorkoutView: React.FC = () => {
                   className={`p-3.5 rounded-2xl border transition-all ${
                     isDone
                       ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                      : isWarmup
+                      ? 'bg-amber-500/5 border-amber-500/20 text-amber-100'
                       : 'bg-zinc-900/90 border-zinc-800 text-zinc-100'
                   }`}
                 >
@@ -207,29 +254,50 @@ export const LiveWorkoutView: React.FC = () => {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5">
                         <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
-                          isDone ? 'bg-emerald-500 text-zinc-950' : 'bg-zinc-800 text-zinc-300'
+                          isDone 
+                            ? 'bg-emerald-500 text-zinc-950' 
+                            : isWarmup
+                            ? 'bg-amber-500 text-zinc-950'
+                            : 'bg-zinc-800 text-zinc-300'
                         }`}>
                           {set.setNumber}
                         </span>
                         <div>
-                          <div className="text-xs font-bold text-zinc-200 capitalize">{set.type} Set</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-zinc-200 capitalize">{set.type} Set</span>
+                            {isWarmup && (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold text-[9px] uppercase">
+                                Warmup
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[11px] text-zinc-500 font-mono">
                             Prev: {set.previousWeight ? `${set.previousWeight}kg × ${set.previousReps}` : '—'}
                           </div>
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => toggleSetCompleted(currentExercise.id, set.id)}
-                        className={`px-3.5 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md text-xs font-bold shrink-0 min-h-[40px] ${
-                          isDone
-                            ? 'bg-emerald-500 text-zinc-950 shadow-emerald-500/20'
-                            : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                        }`}
-                      >
-                        <Check className="w-4 h-4 font-black" />
-                        <span>{isDone ? 'Done' : 'Complete'}</span>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => removeSetFromExercise(currentExercise.id, set.id)}
+                          className="p-2 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors"
+                          title="Delete set"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => toggleSetCompleted(currentExercise.id, set.id)}
+                          className={`px-3.5 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md text-xs font-bold shrink-0 min-h-[40px] ${
+                            isDone
+                              ? 'bg-emerald-500 text-zinc-950 shadow-emerald-500/20'
+                              : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                          }`}
+                        >
+                          <Check className="w-4 h-4 font-black" />
+                          <span>{isDone ? 'Done' : 'Complete'}</span>
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800/60">
@@ -295,11 +363,15 @@ export const LiveWorkoutView: React.FC = () => {
                     {/* Set Number */}
                     <div className="col-span-2 flex items-center gap-2">
                       <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs ${
-                        isDone ? 'bg-emerald-500 text-zinc-950' : 'bg-zinc-800 text-zinc-300'
+                        isDone 
+                          ? 'bg-emerald-500 text-zinc-950' 
+                          : isWarmup
+                          ? 'bg-amber-500 text-zinc-950'
+                          : 'bg-zinc-800 text-zinc-300'
                       }`}>
                         {set.setNumber}
                       </span>
-                      <span className="text-[10px] text-zinc-500 uppercase font-semibold">
+                      <span className={`text-[10px] uppercase font-bold ${isWarmup ? 'text-amber-400' : 'text-zinc-500'}`}>
                         {set.type}
                       </span>
                     </div>
@@ -358,11 +430,19 @@ export const LiveWorkoutView: React.FC = () => {
                       </button>
                     </div>
 
-                    {/* Complete Checkbox Button */}
-                    <div className="col-span-2 flex justify-end">
+                    {/* Complete Checkbox & Delete Buttons */}
+                    <div className="col-span-2 flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => removeSetFromExercise(currentExercise.id, set.id)}
+                        className="p-2 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-zinc-800 transition-colors"
+                        title="Delete set"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+
                       <button
                         onClick={() => toggleSetCompleted(currentExercise.id, set.id)}
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-md ${
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-md ${
                           isDone
                             ? 'bg-emerald-500 text-zinc-950 shadow-emerald-500/20 scale-105'
                             : 'bg-zinc-800 text-zinc-400 hover:bg-purple-500/20 hover:text-purple-400'
@@ -377,15 +457,27 @@ export const LiveWorkoutView: React.FC = () => {
             })}
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full mt-2 border border-dashed border-zinc-800 hover:border-purple-500/40 text-xs text-zinc-400"
-            onClick={() => addSetToExercise(currentExercise.id)}
-            leftIcon={<Plus className="w-3.5 h-3.5" />}
-          >
-            Add Additional Working Set
-          </Button>
+          {/* Dual Add Set Buttons */}
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="border border-dashed border-amber-500/30 hover:bg-amber-500/10 text-xs text-amber-300 font-bold"
+              onClick={() => addSetToExercise(currentExercise.id, 'warmup')}
+              leftIcon={<Plus className="w-3.5 h-3.5 text-amber-400" />}
+            >
+              + Warmup Set
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="border border-dashed border-purple-500/30 hover:bg-purple-500/10 text-xs text-purple-300 font-bold"
+              onClick={() => addSetToExercise(currentExercise.id, 'working')}
+              leftIcon={<Plus className="w-3.5 h-3.5 text-purple-400" />}
+            >
+              + Working Set
+            </Button>
+          </div>
         </div>
 
         {/* Footer Navigation within Workout */}
@@ -421,6 +513,7 @@ export const LiveWorkoutView: React.FC = () => {
               onClick={() => {
                 triggerConfetti();
                 finishWorkout();
+                onFinishAndReturnToPlanner?.();
               }}
               rightIcon={<Award className="w-4 h-4" />}
               className="w-full sm:w-auto min-h-[44px]"
