@@ -42,12 +42,12 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             {/* Grab handle */}
             <div className="w-12 h-1.5 bg-zinc-700/60 rounded-full mx-auto mb-5" />
 
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-xl font-bold text-zinc-100">{title}</h3>
-                {subtitle && <p className="text-sm text-zinc-400 mt-0.5">{subtitle}</p>}
+            <div className="flex items-start justify-between mb-4 gap-2">
+              <div className="min-w-0 flex-1 pr-2">
+                <h3 className="text-lg sm:text-xl font-bold text-zinc-100 leading-snug break-words">{title}</h3>
+                {subtitle && <p className="text-xs sm:text-sm text-zinc-400 mt-0.5 leading-relaxed">{subtitle}</p>}
               </div>
-              <Button variant="ghost" size="icon" onClick={onClose}>
+              <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 -mt-1 -mr-1">
                 <X className="w-5 h-5" />
               </Button>
             </div>

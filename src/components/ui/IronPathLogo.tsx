@@ -51,14 +51,14 @@ export const IronPathLogo: React.FC<IronPathLogoProps> = ({
       </div>
 
       {showText && (
-        <div className="leading-tight">
-          <div className="flex items-center gap-0.5">
-            <span className={`font-black tracking-tight text-zinc-100 ${textClasses[size]} font-mono uppercase`}>
+        <div className="leading-tight min-w-0">
+          <div className="flex items-center gap-0.5 min-w-0">
+            <span className={`font-black tracking-tight text-zinc-100 ${textClasses[size]} font-mono uppercase truncate`}>
               IRON<span className="text-purple-400">PATH</span>
             </span>
           </div>
           {subtitle && (
-            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block -mt-0.5">
+            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block -mt-0.5 truncate">
               {subtitle}
             </span>
           )}

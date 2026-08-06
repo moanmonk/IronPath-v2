@@ -343,11 +343,11 @@ export const TrainView: React.FC = () => {
                       </div>
 
                       {/* Previous Log Reference */}
-                      <div className="col-span-3 sm:col-span-3 text-xs text-zinc-400 font-mono flex items-center gap-1 truncate">
+                      <div className="col-span-2 sm:col-span-3 text-[10px] sm:text-xs text-zinc-400 font-mono flex items-center gap-0.5 truncate min-w-0">
                         {set.previousWeight ? (
-                          <span>{set.previousWeight}kg × {set.previousReps}</span>
+                          <span className="truncate">{set.previousWeight}k × {set.previousReps}</span>
                         ) : (
-                          <span className="text-zinc-400 font-normal italic">First Log</span>
+                          <span className="text-zinc-500 font-normal italic truncate">First</span>
                         )}
                       </div>
 
@@ -364,7 +364,7 @@ export const TrainView: React.FC = () => {
                             const parsed = valStr === '' ? 0 : parseFloat(valStr);
                             updateSetData(pe.id, set.id, { weight: isNaN(parsed) ? 0 : parsed });
                           }}
-                          className="w-full bg-zinc-900 border border-zinc-700/70 rounded-lg px-2.5 py-1.5 text-xs font-bold text-zinc-100 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                          className="w-full bg-zinc-900 border border-zinc-700/70 rounded-lg px-1 sm:px-2.5 py-1 text-xs font-mono font-bold text-center text-zinc-100 focus:outline-none focus:border-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </div>
 
@@ -381,21 +381,21 @@ export const TrainView: React.FC = () => {
                             const parsed = valStr === '' ? 0 : parseInt(valStr, 10);
                             updateSetData(pe.id, set.id, { reps: isNaN(parsed) ? 0 : parsed });
                           }}
-                          className="w-full bg-zinc-900 border border-zinc-700/70 rounded-lg px-2 py-1.5 text-xs font-bold text-zinc-100 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                          className="w-full bg-zinc-900 border border-zinc-700/70 rounded-lg px-1 sm:px-2 py-1 text-xs font-mono font-bold text-center text-zinc-100 focus:outline-none focus:border-cyan-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </div>
 
                       {/* Tick Button & Set Actions */}
-                      <div className="col-span-2 sm:col-span-2 flex items-center justify-end gap-1">
+                      <div className="col-span-2 sm:col-span-2 flex items-center justify-end">
                         <button
                           onClick={() => toggleSetCompleted(pe.id, set.id)}
-                          className={`w-full py-1.5 px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer shadow-sm ${
+                          className={`w-full py-1 px-1 sm:px-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer shadow-sm min-h-[30px] ${
                             set.completed
-                              ? 'bg-emerald-500 text-zinc-950 font-black ring-2 ring-emerald-500/40 shadow-emerald-500/30 scale-102'
+                              ? 'bg-emerald-500 text-zinc-950 font-black ring-2 ring-emerald-500/40 shadow-emerald-500/30'
                               : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border border-zinc-700'
                           }`}
                         >
-                          <Check className={`w-4 h-4 ${set.completed ? 'text-zinc-950 stroke-[3]' : 'text-zinc-400'}`} />
+                          <Check className={`w-3.5 h-3.5 ${set.completed ? 'text-zinc-950 stroke-[3]' : 'text-zinc-400'}`} />
                           <span className="hidden sm:inline">{set.completed ? 'Done' : 'Log'}</span>
                         </button>
                         <button
