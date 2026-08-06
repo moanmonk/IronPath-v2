@@ -402,152 +402,109 @@ export const ProgressView: React.FC = () => {
 
       {/* SUB-TAB 1: WORKOUT HISTORY LOGS */}
       {activeSubTab === 'history' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <MetricCard
-              title="Sessions Completed"
-              value={workoutHistory.length}
-              subtitle="Total Logged Workouts"
-              icon={<History className="w-5 h-5 text-emerald-400" />}
-              accentGradient="from-emerald-500/20 to-transparent"
-            />
-            <MetricCard
-              title="Lifetime Volume Moved"
-              value={`${totalVolumeInHistory.toLocaleString()} kg`}
-              subtitle="Tonnage Completed"
-              icon={<Dumbbell className="w-5 h-5 text-purple-400" />}
-              accentGradient="from-purple-500/20 to-transparent"
-            />
-            <MetricCard
-              title="Total Time Trained"
-              value={`${totalDurationMinutes} min`}
-              subtitle="Time Spent Under Load"
-              icon={<Clock className="w-5 h-5 text-blue-400" />}
-              accentGradient="from-blue-500/20 to-transparent"
-            />
-            <div 
-              onClick={() => setActiveSubTab('measurements')}
-              className="cursor-pointer transition-all group"
-            >
-              <MetricCard
-                title="Latest Body Weight"
-                value={latestMeasurement?.weightKg ? `${latestMeasurement.weightKg} kg` : 'Log Stats'}
-                subtitle={latestMeasurement ? `Logged ${latestMeasurement.date}` : 'Click to view body stats'}
-                icon={<Scale className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" />}
-                accentGradient="from-blue-500/20 to-transparent"
-              />
-            </div>
+        <div className="space-y-5">
+          {/* Summary Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Card className="p-4 bg-zinc-900/80 border-zinc-800 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total Sessions Logged</span>
+                <div className="text-2xl font-black text-emerald-400 mt-0.5">{workoutHistory.length}</div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                <History className="w-5 h-5" />
+              </div>
+            </Card>
+
+            <Card className="p-4 bg-zinc-900/80 border-zinc-800 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total Volume Logged</span>
+                <div className="text-2xl font-black text-purple-400 mt-0.5">{totalVolumeInHistory.toLocaleString()} kg</div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                <Dumbbell className="w-5 h-5" />
+              </div>
+            </Card>
+
+            <Card className="p-4 bg-zinc-900/80 border-zinc-800 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Most Recent Session</span>
+                <div className="text-sm font-black text-zinc-100 truncate mt-1">
+                  {workoutHistory.length > 0 ? workoutHistory[0].title : 'No sessions logged'}
+                </div>
+                <div className="text-[10px] text-zinc-500">{workoutHistory.length > 0 ? workoutHistory[0].date : 'Log your first workout'}</div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20 shrink-0">
+                <Calendar className="w-5 h-5" />
+              </div>
+            </Card>
           </div>
 
-          {/* Active Plan Recovery & Volume Quick Banner */}
-          <Card className="p-4 bg-zinc-900/90 border-zinc-800 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <HeartPulse className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span className="text-sm font-bold text-zinc-200">
-                  Active Plan Recovery & Volume Status ({activePlan?.title})
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveSubTab('analytics')}
-                rightIcon={<ChevronRight className="w-3.5 h-3.5" />}
-                className="text-xs text-purple-400 font-bold self-start sm:self-auto hover:bg-purple-500/10"
-              >
-                View Full 14-Muscle Analysis
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-              <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80">
-                <span className="text-zinc-500 text-[10px] uppercase block font-sans font-bold">Optimal Sets</span>
-                <span className="text-emerald-400 font-black text-base">{volumeCounts.optimal} Muscles</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80">
-                <span className="text-zinc-500 text-[10px] uppercase block font-sans font-bold">Maintenance Sets</span>
-                <span className="text-amber-400 font-black text-base">{volumeCounts.maintenance} Muscles</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80">
-                <span className="text-zinc-500 text-[10px] uppercase block font-sans font-bold">Excessive Sets</span>
-                <span className="text-rose-400 font-black text-base">{volumeCounts.excessive} Muscles</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80">
-                <span className="text-zinc-500 text-[10px] uppercase block font-sans font-bold">0 Sets</span>
-                <span className="text-zinc-400 font-black text-base">{volumeCounts.neglected} Muscles</span>
-              </div>
-            </div>
-          </Card>
-
           {workoutHistory.length === 0 ? (
-            <Card className="p-8 text-center space-y-4 bg-zinc-900/80 border-zinc-800/80">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400">
-                <History className="w-8 h-8" />
+            <Card className="p-8 text-center space-y-4 bg-zinc-900/80 border-zinc-800">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400">
+                <History className="w-7 h-7" />
               </div>
-              <div className="max-w-md mx-auto space-y-2">
-                <h3 className="text-xl font-black text-zinc-100">Your History is Fresh & Ready!</h3>
-                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                  All prefilled sample workouts have been cleared. As soon as you log and finish a session in the Train tab, your real workout logs and total volume will be recorded here.
+              <div className="max-w-md mx-auto space-y-1.5">
+                <h3 className="text-lg font-black text-zinc-100">No Workout Logs Yet</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Every exercise set you log in Today's Workout will immediately show up here in real time.
                 </p>
               </div>
-              <div className="pt-2">
+              <div>
                 <Button
                   onClick={() => setActiveMainTab('train')}
                   variant="primary"
                   leftIcon={<Dumbbell className="w-4 h-4 text-zinc-950" />}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black shadow-lg shadow-emerald-500/20 px-5 py-2.5 rounded-xl text-sm"
+                  className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black shadow-md shadow-emerald-500/20 px-5 py-2 rounded-xl text-xs"
                 >
-                  Start Your First Workout
+                  Go to Today's Workout
                 </Button>
               </div>
             </Card>
           ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-zinc-200 flex items-center gap-2">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-sm font-bold text-zinc-300 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  Completed Sessions ({workoutHistory.length})
+                  Logged Workout Sessions ({workoutHistory.length})
                 </h3>
                 <button
                   type="button"
                   onClick={clearWorkoutHistory}
-                  className="text-xs text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/20 transition-all"
+                  className="text-xs text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/20 transition-all cursor-pointer"
                 >
-                  <Trash2 className="w-3 h-3" /> Clear History Logs
+                  <Trash2 className="w-3.5 h-3.5" /> Clear History
                 </button>
               </div>
 
               <div className="space-y-3">
                 {workoutHistory.map((session) => (
-                  <Card key={session.id} className="p-4 sm:p-5 bg-zinc-900/90 border-zinc-800/80 hover:border-zinc-700 transition-all space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800/60 pb-3">
+                  <Card key={session.id} className="p-4 bg-zinc-900/90 border-zinc-800/80 hover:border-zinc-700 transition-all space-y-3">
+                    <div className="flex items-center justify-between gap-2 border-b border-zinc-800/60 pb-2.5">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="font-black text-zinc-100 text-base sm:text-lg">{session.title}</h4>
-                          <Badge variant="emerald" className="text-[10px] font-mono">
+                          <h4 className="font-black text-zinc-100 text-base">{session.title}</h4>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-emerald-400 border border-zinc-700">
                             {session.date}
-                          </Badge>
+                          </span>
                         </div>
-                        <p className="text-xs text-zinc-400 mt-0.5 flex items-center gap-3">
-                          <span>Focus: <strong className="text-zinc-200">{session.focusMuscles?.join(', ') || 'General Hypertrophy'}</strong></span>
-                        </p>
                       </div>
 
                       <div className="flex items-center gap-3 shrink-0">
                         <div className="text-right">
-                          <div className="text-xs font-bold text-emerald-400 font-mono">
+                          <div className="text-xs font-black text-emerald-400 font-mono">
                             {(session.totalVolumeKg || 0).toLocaleString()} kg
                           </div>
                           <div className="text-[10px] text-zinc-500">
-                            {Math.round((session.durationSeconds || 0) / 60)} min
+                            {session.exercises?.length || 0} exercises
                           </div>
                         </div>
 
                         <button
                           type="button"
                           onClick={() => deleteWorkoutSession(session.id)}
-                          className="p-2 text-zinc-500 hover:text-rose-400 rounded-lg hover:bg-zinc-800 transition-all"
-                          title="Delete this session"
+                          className="p-1.5 text-zinc-500 hover:text-rose-400 rounded-lg hover:bg-zinc-800 transition-all cursor-pointer"
+                          title="Delete session log"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -555,32 +512,65 @@ export const ProgressView: React.FC = () => {
                     </div>
 
                     {/* Exercises Performed */}
-                    <div className="space-y-2 pt-1">
-                      <div className="text-xs font-bold text-zinc-300 uppercase tracking-wider text-[10px]">
-                        Exercises Completed ({session.exercises?.length || 0})
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {session.exercises?.map((pe, idx) => {
-                          const completedSets = pe.sets.filter((s) => s.completed);
-                          return (
-                            <div key={pe.id || idx} className="bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-800/60 text-xs space-y-1">
-                              <div className="flex items-center justify-between font-bold text-zinc-200">
-                                <span>{pe.exercise.name}</span>
-                                <span className="text-[10px] text-emerald-400 font-mono">
-                                  {completedSets.length} sets
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-zinc-400 font-mono flex flex-wrap gap-1.5">
-                                {completedSets.map((s) => (
-                                  <span key={s.id} className="bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
-                                    {s.weight}kg × {s.reps}
-                                  </span>
-                                ))}
-                              </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {session.exercises?.map((pe, idx) => {
+                        const completedSets = pe.sets?.filter((s) => s.completed) || [];
+                        const warmupSets = completedSets.filter((s) => s.type === 'warmup');
+                        const workingSets = completedSets.filter((s) => s.type !== 'warmup');
+
+                        return (
+                          <div key={pe.id || idx} className="bg-zinc-950/70 p-2.5 rounded-xl border border-zinc-800/60 text-xs space-y-1.5">
+                            <div className="flex items-center justify-between font-bold text-zinc-200">
+                              <span className="truncate">{pe.exercise.name}</span>
+                              <span className="text-[10px] text-emerald-400 font-mono shrink-0">
+                                {workingSets.length} working set{workingSets.length === 1 ? '' : 's'}
+                              </span>
                             </div>
-                          );
-                        })}
-                      </div>
+
+                            {pe.swappedFrom && (
+                              <div className="text-[10px] font-mono font-bold text-purple-400">
+                                🔄 Swapped from {pe.swappedFrom}
+                              </div>
+                            )}
+
+                            {/* Warmup Sets Section */}
+                            {warmupSets.length > 0 && (
+                              <div className="space-y-0.5">
+                                <span className="text-[9px] font-black uppercase text-amber-400 tracking-wider">
+                                  Warmup Sets ({warmupSets.length}):
+                                </span>
+                                <div className="text-[10px] text-amber-200 font-mono flex flex-wrap gap-1">
+                                  {warmupSets.map((s) => (
+                                    <span key={s.id} className="bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-500/30 font-bold">
+                                      {s.weight}kg × {s.reps}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Working Sets Section */}
+                            {workingSets.length > 0 && (
+                              <div className="space-y-0.5">
+                                <span className="text-[9px] font-black uppercase text-cyan-400 tracking-wider">
+                                  Working Sets ({workingSets.length}):
+                                </span>
+                                <div className="text-[11px] text-zinc-300 font-mono flex flex-wrap gap-1">
+                                  {workingSets.map((s) => (
+                                    <span key={s.id} className="bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800 font-bold text-zinc-200">
+                                      {s.weight}kg × {s.reps}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {completedSets.length === 0 && (
+                              <span className="text-zinc-600 italic text-[10px] block">No sets logged</span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </Card>
                 ))}
@@ -592,107 +582,112 @@ export const ProgressView: React.FC = () => {
 
       {/* SUB-TAB 2: PERSONAL RECORDS (PRS) */}
       {activeSubTab === 'prs' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <MetricCard
-              title="Personal Best Records"
-              value={personalRecords.length}
-              subtitle="Tracked Across Exercises"
-              icon={<Trophy className="w-5 h-5 text-purple-400" />}
-              accentGradient="from-purple-500/20 to-transparent"
-            />
-            <MetricCard
-              title="Top Heaviest Lift"
-              value={
-                personalRecords.length > 0
-                  ? `${Math.max(...personalRecords.map((p) => p.weight))} kg`
-                  : '--'
-              }
-              subtitle="Max Working Weight"
-              icon={<Flame className="w-5 h-5 text-amber-400" />}
-              accentGradient="from-amber-500/20 to-transparent"
-            />
-            <MetricCard
-              title="Highest Estimated 1RM"
-              value={
-                personalRecords.length > 0
-                  ? `${Math.max(...personalRecords.map((p) => p.estimated1RM))} kg`
-                  : '--'
-              }
-              subtitle="Calculated Strength Potential"
-              icon={<Zap className="w-5 h-5 text-emerald-400" />}
-              accentGradient="from-emerald-500/20 to-transparent"
-            />
+        <div className="space-y-5">
+          {/* PR Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Card className="p-4 bg-zinc-900/80 border-zinc-800 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total PRs</span>
+                <div className="text-2xl font-black text-purple-400 mt-0.5">{personalRecords.length}</div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                <Trophy className="w-5 h-5" />
+              </div>
+            </Card>
+
+            <Card className="p-4 bg-zinc-900/80 border-zinc-800 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Max Working Weight</span>
+                <div className="text-2xl font-black text-amber-400 mt-0.5">
+                  {personalRecords.length > 0 ? `${Math.max(...personalRecords.map((p) => p.weight))} kg` : '--'}
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                <Flame className="w-5 h-5" />
+              </div>
+            </Card>
+
+            <Card className="p-4 bg-zinc-900/80 border-zinc-800 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Highest Est. 1RM</span>
+                <div className="text-2xl font-black text-emerald-400 mt-0.5">
+                  {personalRecords.length > 0 ? `${Math.max(...personalRecords.map((p) => p.estimated1RM))} kg` : '--'}
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                <Zap className="w-5 h-5" />
+              </div>
+            </Card>
           </div>
 
           {personalRecords.length === 0 ? (
-            <Card className="p-8 text-center space-y-4 bg-zinc-900/80 border-zinc-800/80">
-              <div className="w-16 h-16 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto text-purple-400">
-                <Trophy className="w-8 h-8" />
+            <Card className="p-8 text-center space-y-4 bg-zinc-900/80 border-zinc-800">
+              <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto text-purple-400">
+                <Trophy className="w-7 h-7" />
               </div>
-              <div className="max-w-md mx-auto space-y-2">
-                <h3 className="text-xl font-black text-zinc-100">No Personal Records Yet</h3>
-                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                  Your PR board is clean! When you log completed working sets during workouts, any new maximum weight or calculated 1RM will automatically save here. You can also manually add your current baseline PRs below.
+              <div className="max-w-md mx-auto space-y-1.5">
+                <h3 className="text-lg font-black text-zinc-100">No Personal Records Logged</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  As you log completed working sets, any new max weight or 1RM automatically records here. You can also manually add your PRs below.
                 </p>
               </div>
-              <div className="pt-2 flex items-center justify-center gap-3">
+              <div>
                 <Button
                   onClick={() => setIsAddPRModalOpen(true)}
                   variant="primary"
                   leftIcon={<Plus className="w-4 h-4 text-zinc-950" />}
-                  className="bg-purple-500 hover:bg-purple-400 text-zinc-950 font-black shadow-lg shadow-purple-500/20 px-5 py-2.5 rounded-xl text-sm"
+                  className="bg-purple-500 hover:bg-purple-400 text-zinc-950 font-black shadow-md shadow-purple-500/20 px-4 py-2 rounded-xl text-xs"
                 >
                   Log PR Manually
                 </Button>
               </div>
             </Card>
           ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-zinc-200 flex items-center gap-2">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-sm font-bold text-zinc-300 flex items-center gap-2">
                   <Trophy className="w-4 h-4 text-purple-400" />
-                  Your Active PR Hall of Fame ({personalRecords.length})
+                  Personal Records List ({personalRecords.length})
                 </h3>
                 <button
                   type="button"
                   onClick={clearPersonalRecords}
-                  className="text-xs text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/20 transition-all"
+                  className="text-xs text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/20 transition-all cursor-pointer"
                 >
-                  <Trash2 className="w-3 h-3" /> Clear All PRs
+                  <Trash2 className="w-3.5 h-3.5" /> Clear PRs
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {personalRecords.map((pr) => (
-                  <Card key={pr.id} className="p-4 bg-zinc-900/90 border-zinc-800/80 hover:border-purple-500/40 transition-all space-y-3 relative group">
-                    <div className="flex items-start justify-between gap-2 border-b border-zinc-800/60 pb-2.5">
+                  <Card key={pr.id} className="p-3.5 bg-zinc-900/90 border-zinc-800/80 hover:border-purple-500/40 transition-all space-y-2.5">
+                    <div className="flex items-start justify-between gap-2 border-b border-zinc-800/60 pb-2">
                       <div>
-                        <Badge variant="purple" className="text-[10px] mb-1 font-mono uppercase">
+                        <Badge variant="purple" className="text-[9px] font-mono uppercase px-1.5 py-0.5">
                           {pr.muscle.replace('_', ' ')}
                         </Badge>
-                        <h4 className="font-black text-zinc-100 text-base leading-snug">{pr.exerciseName}</h4>
+                        <h4 className="font-black text-zinc-100 text-sm mt-0.5 leading-snug">{pr.exerciseName}</h4>
                       </div>
                       <button
                         type="button"
                         onClick={() => deletePersonalRecord(pr.id)}
-                        className="p-1.5 text-zinc-500 hover:text-rose-400 rounded-lg hover:bg-zinc-800 transition-all"
+                        className="p-1 text-zinc-500 hover:text-rose-400 rounded hover:bg-zinc-800 transition-all cursor-pointer"
                         title="Delete PR"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-800/60 font-mono">
+                    <div className="grid grid-cols-2 gap-2 bg-zinc-950/70 p-2 rounded-xl border border-zinc-800/60 font-mono text-xs">
                       <div>
-                        <span className="text-[10px] text-zinc-500 block uppercase">Top Weight</span>
-                        <span className="text-lg font-black text-purple-300">{pr.weight} kg</span>
+                        <span className="text-[9px] text-zinc-500 block uppercase font-sans">Max Weight</span>
+                        <span className="text-base font-black text-purple-300">{pr.weight} kg</span>
                         <span className="text-[10px] text-zinc-400 block">{pr.reps} reps</span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-zinc-500 block uppercase">Estimated 1RM</span>
-                        <span className="text-lg font-black text-emerald-400">{pr.estimated1RM} kg</span>
-                        <span className="text-[10px] text-zinc-400 block">{pr.date}</span>
+                        <span className="text-[9px] text-zinc-500 block uppercase font-sans">Est. 1RM</span>
+                        <span className="text-base font-black text-emerald-400">{pr.estimated1RM} kg</span>
+                        <span className="text-[10px] text-zinc-500 block">{pr.date}</span>
                       </div>
                     </div>
                   </Card>

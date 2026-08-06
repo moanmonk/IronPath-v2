@@ -25,7 +25,13 @@ import {
   INITIAL_BODY_MEASUREMENTS
 } from '../data/mockData';
 import { normalizeMuscleGroup } from '../lib/muscleUtils';
-import { playTimerCompletionBeep } from '../lib/audioUtils';
+import { 
+  playTimerCompletionBeep, 
+  playCountdownTick, 
+  playSetCompletionSound, 
+  playWorkoutFinishedSound, 
+  triggerHaptic 
+} from '../lib/audioUtils';
 
 export const getOrBuildExercise = (
   library: Exercise[],
@@ -154,15 +160,18 @@ interface IronPathState {
   activeWorkout: WorkoutSession;
   isWorkoutInProgress: boolean;
   workoutElapsedTime: number;
+  persistentNotes: Record<string, string>;
   startWorkout: () => void;
   pauseWorkout: () => void;
   finishWorkout: () => void;
   toggleSetCompleted: (exerciseId: string, setId: string) => void;
   updateSetData: (exerciseId: string, setId: string, updates: Partial<ExerciseSet>) => void;
+  updateExerciseNote: (exerciseId: string, note: string) => void;
   addSetToExercise: (exerciseId: string, setType?: 'working' | 'warmup') => void;
   removeSetFromExercise: (exerciseId: string, setId: string) => void;
   addExerciseToWorkout: (exercise: Exercise) => void;
   removeExerciseFromWorkout: (exerciseId: string) => void;
+  swapActiveWorkoutExercise: (plannedExerciseId: string, newExercise: Exercise, reason?: string) => void;
   reorderExercises: (startIndex: number, endIndex: number) => void;
   setWorkoutNote: (note: string) => void;
 
@@ -201,6 +210,153 @@ const STORAGE_KEY_MEASUREMENTS = 'ironpath_body_measurements';
 const STORAGE_KEY_HISTORY = 'ironpath_workout_history';
 const STORAGE_KEY_PRS = 'ironpath_personal_records';
 const STORAGE_KEY_CUSTOM_EXERCISES = 'ironpath_custom_exercises';
+const STORAGE_KEY_NOTES = 'ironpath_persistent_exercise_notes';
+
+const loadSavedNotes = (): Record<string, string> => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_NOTES);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return {};
+};
+
+const syncActiveWorkoutToHistoryAndPRs = (
+  activeWorkout: WorkoutSession,
+  workoutHistory: WorkoutSession[],
+  personalRecords: PersonalRecord[],
+  persistentNotes: Record<string, string>
+) => {
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  let totalVol = 0;
+  activeWorkout.exercises?.forEach((pe) => {
+    pe.sets?.forEach((s) => {
+      if (s.completed) totalVol += s.weight * s.reps;
+    });
+  });
+
+  const updatedSession: WorkoutSession = {
+    ...activeWorkout,
+    date: activeWorkout.date || todayStr,
+    totalVolumeKg: totalVol,
+    completed: true
+  };
+
+  const existingIdx = workoutHistory.findIndex((h) => h.id === activeWorkout.id);
+  let updatedHistory: WorkoutSession[];
+
+  if (activeWorkout.exercises && activeWorkout.exercises.length > 0) {
+    if (existingIdx >= 0) {
+      updatedHistory = [...workoutHistory];
+      updatedHistory[existingIdx] = updatedSession;
+    } else {
+      updatedHistory = [updatedSession, ...workoutHistory];
+    }
+  } else {
+    updatedHistory = workoutHistory;
+  }
+
+  const updatedNotes = { ...persistentNotes };
+  activeWorkout.exercises?.forEach((pe) => {
+    if (pe.notes) {
+      if (pe.exercise?.name) updatedNotes[pe.exercise.name.toLowerCase()] = pe.notes;
+      if (pe.exercise?.id) updatedNotes[pe.exercise.id.toLowerCase()] = pe.notes;
+    }
+  });
+
+  const updatedPRs = [...personalRecords];
+  activeWorkout.exercises?.forEach((pe) => {
+    pe.sets?.forEach((s) => {
+      if (s.completed && s.weight > 0 && s.reps > 0) {
+        const e1rm = Math.round((s.weight * (1 + s.reps / 30)) * 10) / 10;
+        const exName = pe.exercise.name;
+        const prIdx = updatedPRs.findIndex(
+          (pr) => pr.exerciseName.toLowerCase() === exName.toLowerCase()
+        );
+
+        if (prIdx >= 0) {
+          const existing = updatedPRs[prIdx];
+          if (s.weight > existing.weight || e1rm > existing.estimated1RM) {
+            updatedPRs[prIdx] = {
+              ...existing,
+              weight: Math.max(existing.weight, s.weight),
+              reps: s.weight >= existing.weight ? s.reps : existing.reps,
+              estimated1RM: Math.max(existing.estimated1RM, e1rm),
+              date: todayStr,
+              isRecent: true
+            };
+          }
+        } else {
+          updatedPRs.push({
+            id: `pr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            exerciseName: exName,
+            muscle: pe.exercise.primaryMuscle,
+            weight: s.weight,
+            reps: s.reps,
+            estimated1RM: e1rm,
+            date: todayStr,
+            isRecent: true
+          });
+        }
+      }
+    });
+  });
+
+  try {
+    localStorage.setItem(STORAGE_KEY_WORKOUT, JSON.stringify(updatedSession));
+    localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(updatedHistory));
+    localStorage.setItem(STORAGE_KEY_PRS, JSON.stringify(updatedPRs));
+    localStorage.setItem(STORAGE_KEY_NOTES, JSON.stringify(updatedNotes));
+  } catch {}
+
+  return {
+    activeWorkout: updatedSession,
+    workoutHistory: updatedHistory,
+    personalRecords: updatedPRs,
+    persistentNotes: updatedNotes
+  };
+};
+
+export const getLastLogsForExercise = (
+  workoutHistory: WorkoutSession[],
+  persistentNotes: Record<string, string>,
+  exerciseNameOrId: string
+) => {
+  const nameTrim = (exerciseNameOrId || '').trim().toLowerCase();
+  if (!nameTrim) return { lastWeight: undefined, lastReps: undefined, lastNote: '', sets: [] };
+
+  let foundPe: PlannedExercise | null = null;
+  
+  for (const session of workoutHistory) {
+    if (!session.exercises) continue;
+    const match = session.exercises.find((pe) => {
+      if (pe.exercise?.id && pe.exercise.id.toLowerCase() === nameTrim) return true;
+      if (pe.exercise?.name && pe.exercise.name.trim().toLowerCase() === nameTrim) return true;
+      return false;
+    });
+    if (match && match.sets && match.sets.some((s) => s.completed || s.weight > 0)) {
+      foundPe = match;
+      break;
+    }
+  }
+
+  const storedNote = persistentNotes[nameTrim] || (foundPe?.notes || '');
+
+  if (!foundPe || !foundPe.sets || foundPe.sets.length === 0) {
+    return { lastWeight: undefined, lastReps: undefined, lastNote: storedNote, sets: [] };
+  }
+
+  const completedSets = foundPe.sets.filter((s) => s.completed || s.weight > 0);
+  const workingSets = completedSets.filter((s) => s.type === 'working');
+  const targetSet = workingSets.length > 0 ? workingSets[workingSets.length - 1] : completedSets[completedSets.length - 1];
+
+  return {
+    lastWeight: targetSet ? targetSet.weight : undefined,
+    lastReps: targetSet ? targetSet.reps : undefined,
+    lastNote: storedNote,
+    sets: completedSets.map((s) => ({ weight: s.weight, reps: s.reps, type: s.type }))
+  };
+};
 
 const loadSavedCustomExercises = (): Exercise[] => {
   try {
@@ -462,6 +618,7 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
   activeWorkout: loadSavedWorkout(),
   isWorkoutInProgress: false,
   workoutElapsedTime: 0,
+  persistentNotes: loadSavedNotes(),
 
   startWorkout: () => {
     set({ isWorkoutInProgress: true });
@@ -472,7 +629,7 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
   },
 
   finishWorkout: () => {
-    const { activeWorkout, personalRecords, workoutHistory } = get();
+    const { activeWorkout, personalRecords, workoutHistory, persistentNotes } = get();
     // Celebrate & mark workout as complete
     const completedWorkout: WorkoutSession = {
       ...activeWorkout,
@@ -481,6 +638,15 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
     };
 
     const newHistory = [completedWorkout, ...workoutHistory];
+
+    // Save notes to persistentNotes dictionary
+    const newNotes = { ...persistentNotes };
+    completedWorkout.exercises.forEach((pe) => {
+      if (pe.notes) {
+        if (pe.exercise?.name) newNotes[pe.exercise.name.toLowerCase()] = pe.notes;
+        if (pe.exercise?.id) newNotes[pe.exercise.id.toLowerCase()] = pe.notes;
+      }
+    });
 
     // Auto-detect PRs achieved during this workout
     const updatedPRs = [...personalRecords];
@@ -528,27 +694,40 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
       isWorkoutInProgress: false,
       activeTab: 'train',
       workoutHistory: newHistory,
-      personalRecords: updatedPRs
+      personalRecords: updatedPRs,
+      persistentNotes: newNotes
     });
+
+    playWorkoutFinishedSound(
+      get().userProfile.soundAlerts !== false,
+      get().userProfile.hapticAlerts !== false
+    );
 
     try {
       localStorage.removeItem(STORAGE_KEY_WORKOUT);
       localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(newHistory));
       localStorage.setItem(STORAGE_KEY_PRS, JSON.stringify(updatedPRs));
+      localStorage.setItem(STORAGE_KEY_NOTES, JSON.stringify(newNotes));
     } catch {}
   },
 
   toggleSetCompleted: (exerciseId, setId) => {
     set((state) => {
+      const soundOn = state.userProfile.soundAlerts !== false;
+      const hapticsOn = state.userProfile.hapticAlerts !== false;
+
       const exercises = state.activeWorkout.exercises.map((pe) => {
         if (pe.id !== exerciseId) return pe;
         const sets = pe.sets.map((s) => {
           if (s.id !== setId) return s;
           const newCompleted = !s.completed;
-          // Trigger rest timer on completing a working set!
+          // Trigger rest timer and chime on completing a set!
           if (newCompleted) {
+            playSetCompletionSound(soundOn, hapticsOn);
             const exerciseRest = pe.restSeconds || state.userProfile.defaultRestTimerSeconds || 120;
             get().startRestTimer(exerciseRest);
+          } else {
+            triggerHaptic('tap', hapticsOn);
           }
           return { ...s, completed: newCompleted };
         });
@@ -569,11 +748,12 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
         totalVolumeKg: totalVol
       };
 
-      try {
-        localStorage.setItem(STORAGE_KEY_WORKOUT, JSON.stringify(updatedWorkout));
-      } catch {}
-
-      return { activeWorkout: updatedWorkout };
+      return syncActiveWorkoutToHistoryAndPRs(
+        updatedWorkout,
+        state.workoutHistory,
+        state.personalRecords,
+        state.persistentNotes
+      );
     });
   },
 
@@ -586,11 +766,42 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
       });
 
       const updatedWorkout = { ...state.activeWorkout, exercises };
-      try {
-        localStorage.setItem(STORAGE_KEY_WORKOUT, JSON.stringify(updatedWorkout));
-      } catch {}
+      return syncActiveWorkoutToHistoryAndPRs(
+        updatedWorkout,
+        state.workoutHistory,
+        state.personalRecords,
+        state.persistentNotes
+      );
+    });
+  },
 
-      return { activeWorkout: updatedWorkout };
+  updateExerciseNote: (exerciseId, note) => {
+    set((state) => {
+      let targetExName = '';
+      let targetExId = '';
+
+      const exercises = state.activeWorkout.exercises.map((pe) => {
+        if (pe.id === exerciseId || pe.exercise.id === exerciseId) {
+          targetExName = pe.exercise.name.toLowerCase();
+          targetExId = pe.exercise.id.toLowerCase();
+          return { ...pe, notes: note };
+        }
+        return pe;
+      });
+
+      const updatedWorkout = { ...state.activeWorkout, exercises };
+
+      const updatedNotes = { ...state.persistentNotes };
+      if (targetExName) updatedNotes[targetExName] = note;
+      if (targetExId) updatedNotes[targetExId] = note;
+      if (exerciseId) updatedNotes[exerciseId] = note;
+
+      return syncActiveWorkoutToHistoryAndPRs(
+        updatedWorkout,
+        state.workoutHistory,
+        state.personalRecords,
+        updatedNotes
+      );
     });
   },
 
@@ -649,11 +860,12 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
       });
 
       const updatedWorkout = { ...state.activeWorkout, exercises };
-      try {
-        localStorage.setItem(STORAGE_KEY_WORKOUT, JSON.stringify(updatedWorkout));
-      } catch {}
-
-      return { activeWorkout: updatedWorkout };
+      return syncActiveWorkoutToHistoryAndPRs(
+        updatedWorkout,
+        state.workoutHistory,
+        state.personalRecords,
+        state.persistentNotes
+      );
     });
   },
 
@@ -668,49 +880,63 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
       });
 
       const updatedWorkout = { ...state.activeWorkout, exercises };
-      try {
-        localStorage.setItem(STORAGE_KEY_WORKOUT, JSON.stringify(updatedWorkout));
-      } catch {}
-
-      return { activeWorkout: updatedWorkout };
+      return syncActiveWorkoutToHistoryAndPRs(
+        updatedWorkout,
+        state.workoutHistory,
+        state.personalRecords,
+        state.persistentNotes
+      );
     });
   },
 
   addExerciseToWorkout: (exercise) => {
     set((state) => {
+      const lastLogs = getLastLogsForExercise(state.workoutHistory, state.persistentNotes, exercise.id) ||
+                       getLastLogsForExercise(state.workoutHistory, state.persistentNotes, exercise.name);
+
+      const baseWeight = lastLogs.lastWeight !== undefined ? lastLogs.lastWeight : 20;
+      const baseReps = lastLogs.lastReps !== undefined ? lastLogs.lastReps : 10;
+      const note = lastLogs.lastNote || exercise.notes || exercise.cue;
+
       const newPlanned: PlannedExercise = {
         id: `pe_${Date.now()}`,
         exercise,
         restSeconds: state.userProfile.defaultRestTimerSeconds || 120,
+        notes: note,
         sets: [
           {
             id: `set_${Date.now()}_1`,
             setNumber: 1,
             type: 'working',
-            weight: 20,
-            reps: 10,
+            weight: baseWeight,
+            reps: baseReps,
             rir: 2,
-            completed: false
+            completed: false,
+            previousWeight: baseWeight,
+            previousReps: baseReps
           },
           {
             id: `set_${Date.now()}_2`,
             setNumber: 2,
             type: 'working',
-            weight: 20,
-            reps: 10,
+            weight: baseWeight,
+            reps: baseReps,
             rir: 1,
-            completed: false
+            completed: false,
+            previousWeight: baseWeight,
+            previousReps: baseReps
           }
         ]
       };
 
       const exercises = [...state.activeWorkout.exercises, newPlanned];
       const updatedWorkout = { ...state.activeWorkout, exercises };
-      try {
-        localStorage.setItem(STORAGE_KEY_WORKOUT, JSON.stringify(updatedWorkout));
-      } catch {}
-
-      return { activeWorkout: updatedWorkout };
+      return syncActiveWorkoutToHistoryAndPRs(
+        updatedWorkout,
+        state.workoutHistory,
+        state.personalRecords,
+        state.persistentNotes
+      );
     });
   },
 
@@ -718,11 +944,37 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
     set((state) => {
       const exercises = state.activeWorkout.exercises.filter((pe) => pe.id !== exerciseId);
       const updatedWorkout = { ...state.activeWorkout, exercises };
-      try {
-        localStorage.setItem(STORAGE_KEY_WORKOUT, JSON.stringify(updatedWorkout));
-      } catch {}
+      return syncActiveWorkoutToHistoryAndPRs(
+        updatedWorkout,
+        state.workoutHistory,
+        state.personalRecords,
+        state.persistentNotes
+      );
+    });
+  },
 
-      return { activeWorkout: updatedWorkout };
+  swapActiveWorkoutExercise: (plannedExerciseId, newExercise, reason) => {
+    set((state) => {
+      const exercises = state.activeWorkout.exercises.map((pe) => {
+        if (pe.id !== plannedExerciseId) return pe;
+        const oldName = pe.exercise.name;
+        const swapNote = `[Swapped from ${oldName}${reason ? ` (${reason})` : ''}]`;
+        const updatedNote = pe.notes ? `${pe.notes}\n${swapNote}` : swapNote;
+        return {
+          ...pe,
+          exercise: newExercise,
+          swappedFrom: oldName,
+          notes: updatedNote
+        };
+      });
+
+      const updatedWorkout = { ...state.activeWorkout, exercises };
+      return syncActiveWorkoutToHistoryAndPRs(
+        updatedWorkout,
+        state.workoutHistory,
+        state.personalRecords,
+        state.persistentNotes
+      );
     });
   },
 
@@ -761,6 +1013,8 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
 
   startRestTimer: (duration = 120) => {
     const targetEndTime = Date.now() + duration * 1000;
+    const { userProfile } = get();
+    triggerHaptic('bump', userProfile.hapticAlerts !== false);
     set({
       restTimer: {
         isRunning: true,
@@ -772,6 +1026,7 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
   },
 
   stopRestTimer: () => {
+    triggerHaptic('tap', get().userProfile.hapticAlerts !== false);
     set((state) => ({
       restTimer: { ...state.restTimer, isRunning: false, targetEndTime: undefined }
     }));
@@ -787,10 +1042,11 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
         remainingSecs = Math.max(0, Math.ceil(remainingMs / 1000));
       }
 
+      const soundOn = state.userProfile.soundAlerts !== false;
+      const hapticsOn = state.userProfile.hapticAlerts !== false;
+
       if (remainingSecs <= 0) {
-        if (state.userProfile.soundAlerts !== false) {
-          playTimerCompletionBeep();
-        }
+        playTimerCompletionBeep(soundOn, hapticsOn);
         return {
           restTimer: {
             ...state.restTimer,
@@ -799,6 +1055,11 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
             targetEndTime: undefined
           }
         };
+      }
+
+      // 3-2-1 countdown ticks
+      if (remainingSecs <= 3 && remainingSecs !== state.restTimer.secondsRemaining) {
+        playCountdownTick(remainingSecs, soundOn, hapticsOn);
       }
 
       return {
@@ -1310,42 +1571,62 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
   },
 
   startWorkoutFromPlanDay: (planTitle, day) => {
+    const history = get().workoutHistory;
+    const persistentNotes = get().persistentNotes;
+
     const activeWorkoutExercises: PlannedExercise[] = day.exercises.map((cEx, idx) => {
       const libraryEx = getOrBuildExercise(get().exercisesLibrary, cEx);
       
+      const lastLogs = getLastLogsForExercise(history, persistentNotes, libraryEx.id) ||
+                       getLastLogsForExercise(history, persistentNotes, libraryEx.name);
+
       const warmupCount = cEx.warmupSets || 0;
       const workingCount = cEx.sets || 3;
       const parsedSets: ExerciseSet[] = [];
 
+      const baseWeight = lastLogs.lastWeight !== undefined ? lastLogs.lastWeight : 30;
+      const baseReps = lastLogs.lastReps !== undefined ? lastLogs.lastReps : (parseInt((cEx.reps || '10').split('-')[0]) || 10);
+
       for (let w = 0; w < warmupCount; w++) {
+        const warmupWeight = Math.max(10, Math.round((baseWeight * 0.5) / 2.5) * 2.5);
         parsedSets.push({
           id: `set_w_${Date.now()}_${idx}_${w}`,
           setNumber: w + 1,
           type: 'warmup',
-          weight: 15,
+          weight: warmupWeight,
           reps: 12,
           rir: 3,
-          completed: false
+          completed: false,
+          previousWeight: warmupWeight,
+          previousReps: 12
         });
       }
 
       for (let s = 0; s < workingCount; s++) {
+        const lastSetForIndex = lastLogs.sets && lastLogs.sets.filter(st => st.type === 'working')[s];
+        const setWeight = lastSetForIndex ? lastSetForIndex.weight : baseWeight;
+        const setReps = lastSetForIndex ? lastSetForIndex.reps : baseReps;
+
         parsedSets.push({
           id: `set_${Date.now()}_${idx}_${s}`,
           setNumber: warmupCount + s + 1,
           type: 'working',
-          weight: 30,
-          reps: parseInt((cEx.reps || '10').split('-')[0]) || 10,
+          weight: setWeight,
+          reps: setReps,
           rir: cEx.targetRIR ?? 1,
-          completed: false
+          completed: false,
+          previousWeight: setWeight,
+          previousReps: setReps
         });
       }
+
+      const note = lastLogs.lastNote || cEx.notes || libraryEx.notes || libraryEx.cue;
 
       return {
         id: `pe_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
         exercise: libraryEx,
         sets: parsedSets,
-        notes: cEx.notes || libraryEx.notes || libraryEx.cue,
+        notes: note,
         isOptional: cEx.optional,
         restSeconds: cEx.restSeconds || 120
       };
@@ -1362,15 +1643,18 @@ export const useIronPathStore = create<IronPathState>((set, get) => ({
       exercises: activeWorkoutExercises
     };
 
+    const synced = syncActiveWorkoutToHistoryAndPRs(
+      newSession,
+      history,
+      get().personalRecords,
+      persistentNotes
+    );
+
     set({
-      activeWorkout: newSession,
+      ...synced,
       isWorkoutInProgress: true,
       activeTab: 'train'
     });
-
-    try {
-      localStorage.setItem(STORAGE_KEY_WORKOUT, JSON.stringify(newSession));
-    } catch {}
   },
 
   bodyMeasurements: loadSavedMeasurements(),

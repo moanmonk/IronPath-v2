@@ -103,6 +103,8 @@ export interface Exercise {
   recommendedHypertrophyRange?: string;
   recommendedStrengthRange?: string;
   notes?: string;
+  isUnilateral?: boolean;
+  keywords?: string[];
 }
 
 export interface ExerciseSet {
@@ -125,6 +127,7 @@ export interface PlannedExercise {
   supersetGroup?: string;
   isOptional?: boolean;
   restSeconds?: number;
+  swappedFrom?: string;
 }
 
 export interface WorkoutSession {
@@ -269,6 +272,7 @@ export interface UserProfile {
   theme: 'dark' | 'light';
   accentColor?: AccentColorId;
   soundAlerts: boolean;
+  hapticAlerts?: boolean;
   defaultRestTimerSeconds: number;
   streakDays: number;
 }

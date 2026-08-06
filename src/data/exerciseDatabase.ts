@@ -2455,7 +2455,7 @@ export const COMPREHENSIVE_EXERCISES_LIBRARY: Exercise[] = [
     notes: 'Optimum fiber alignment for posterior deltoid growth.'
   },
   {
-    id: 'ex_cable_face_pull_rope',
+    id: 'ex_cable_face_pull_rope_ext_rotation',
     name: 'Cable Face Pull (Rope with External Rotation)',
     primaryMuscle: 'rear_delts',
     secondaryMuscles: ['upper_back', 'side_delts'],
@@ -2585,7 +2585,7 @@ export const COMPREHENSIVE_EXERCISES_LIBRARY: Exercise[] = [
     notes: 'Pure lat isolation without involving biceps.'
   },
   {
-    id: 'ex_cable_rope_hammer_curl',
+    id: 'ex_cable_rope_hammer_curl_alt',
     name: 'Cable Rope Hammer Curl',
     primaryMuscle: 'biceps',
     secondaryMuscles: ['forearms'],
@@ -2637,7 +2637,7 @@ export const COMPREHENSIVE_EXERCISES_LIBRARY: Exercise[] = [
     notes: 'Peak tension bicep curl on preacher pad.'
   },
   {
-    id: 'ex_cable_triceps_pushdown_rope',
+    id: 'ex_cable_triceps_pushdown_rope_spread',
     name: 'Triceps Cable Pushdown (Rope Attachment)',
     primaryMuscle: 'triceps',
     secondaryMuscles: ['front_delts'],

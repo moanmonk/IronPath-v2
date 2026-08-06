@@ -23,7 +23,6 @@ import { PHYSIQUE_TARGET_CARDS } from '../data/mockData';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { RestTimerBanner } from '../components/ui/RestTimerBanner';
-import { FloatingActionButton } from '../components/ui/FloatingActionButton';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { Card } from '../components/ui/Card';
 import { IronPathLogo } from '../components/ui/IronPathLogo';
@@ -57,8 +56,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     applyAccentTheme(userProfile.accentColor || 'cyan');
   }, [userProfile.accentColor]);
 
-  const navItems: { id: NavigationTab; label: string; icon: React.ReactNode; badge?: string }[] = [
-    { id: 'train', label: 'Train & Log', icon: <Dumbbell className="w-5 h-5" />, badge: isWorkoutInProgress ? 'LIVE' : undefined },
+  const navItems: { id: NavigationTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'train', label: 'Today\'s Workout', icon: <Dumbbell className="w-5 h-5" /> },
     { id: 'programs', label: 'Plans & Programs', icon: <Layers className="w-5 h-5" /> },
     { id: 'exercises', label: 'Exercise Library', icon: <BookOpen className="w-5 h-5" /> },
     { id: 'progress', label: 'History & PRs', icon: <TrendingUp className="w-5 h-5" /> },
@@ -75,16 +74,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           {/* IronPath Logo */}
           <div className="flex items-center justify-between mb-8 px-1">
             <IronPathLogo size="md" subtitle="Hypertrophy OS" />
-            {isWorkoutInProgress && (
-              <button
-                onClick={() => setActiveTab('train')}
-                className="bg-red-600 hover:bg-red-500 text-white font-extrabold text-[10px] px-2 py-1 rounded-lg flex items-center gap-1 shadow-md shadow-red-600/30 active:scale-95 transition-all cursor-pointer shrink-0 animate-pulse"
-                title="Go to Live Workout"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
-                <span>LIVE</span>
-              </button>
-            )}
           </div>
 
           {/* Navigation Links */}
@@ -105,11 +94,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                     <span className={isActive ? 'text-brand-accent' : ''}>{item.icon}</span>
                     <span>{item.label}</span>
                   </div>
-                  {item.badge && (
-                    <Badge variant="rose" className="text-[10px] px-2 py-0.5 animate-pulse">
-                      {item.badge}
-                    </Badge>
-                  )}
                 </button>
               );
             })}
@@ -153,15 +137,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <IronPathLogo size="sm" subtitle={currentPhysique.name} />
 
         <div className="flex items-center gap-2">
-          {isWorkoutInProgress && (
-            <button
-              onClick={() => setActiveTab('train')}
-              className="bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-md shadow-red-600/30 active:scale-95 transition-all shrink-0 min-h-[36px] animate-pulse"
-            >
-              <span className="w-2 h-2 rounded-full bg-white shrink-0" />
-              <span>LIVE</span>
-            </button>
-          )}
           <button
             onClick={() => setIsPhysiqueModalOpen(true)}
             className="p-2 rounded-xl bg-zinc-900 border border-brand-accent-glow text-brand-accent text-xs font-bold min-h-[36px]"
@@ -173,25 +148,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
       {/* Main Content Area */}
       <main className="flex-1 w-full min-w-0 p-3.5 sm:p-6 lg:p-10 max-w-7xl mx-auto pb-28 md:pb-12 overflow-x-hidden sm:overflow-x-visible">
-        {/* Top-Right Desktop LIVE Button if session is live */}
-        {isWorkoutInProgress && (
-          <div className="hidden md:flex justify-end mb-4">
-            <button
-              onClick={() => setActiveTab('train')}
-              className="bg-red-600 hover:bg-red-500 text-white font-black text-xs px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-md shadow-red-600/30 active:scale-95 transition-all cursor-pointer animate-pulse"
-            >
-              <span className="w-2 h-2 rounded-full bg-white" />
-              <span>🔴 LIVE SESSION IN PROGRESS</span>
-            </button>
-          </div>
-        )}
         {children}
       </main>
 
       {/* Mobile Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0c0c0e]/95 backdrop-blur-2xl border-t border-zinc-800/80 px-1 py-1.5 flex items-center justify-around">
         {[
-          { id: 'train', label: 'Train', icon: <Dumbbell className="w-5 h-5" />, badge: isWorkoutInProgress },
+          { id: 'train', label: 'Train', icon: <Dumbbell className="w-5 h-5" /> },
           { id: 'programs', label: 'Plans', icon: <Layers className="w-5 h-5" /> },
           { id: 'exercises', label: 'Exercises', icon: <BookOpen className="w-5 h-5" /> },
           { id: 'progress', label: 'History', icon: <TrendingUp className="w-5 h-5" /> },
@@ -203,14 +166,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               key={item.id}
               onClick={() => setActiveTab(item.id as NavigationTab)}
               className={`flex flex-col items-center justify-center min-h-[44px] min-w-[44px] px-2 py-1 rounded-xl text-xs font-medium transition-all relative ${
-                isActive ? (isWorkoutInProgress && item.id === 'train' ? 'text-red-500 font-extrabold scale-105' : 'text-brand-accent font-bold scale-105') : 'text-zinc-500 hover:text-zinc-300'
+                isActive ? 'text-brand-accent font-bold scale-105' : 'text-zinc-500 hover:text-zinc-300'
               }`}
             >
               {item.icon}
               <span className="text-[10px] mt-0.5">{item.label}</span>
-              {item.badge && (
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500 absolute top-1 right-2 animate-ping shadow-[0_0_8px_rgba(239,68,68,0.9)]" />
-              )}
             </button>
           );
         })}
@@ -273,9 +233,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
       {/* Rest Timer Floating Banner */}
       <RestTimerBanner />
-
-      {/* Floating Action Button */}
-      <FloatingActionButton />
 
       {/* Physique Target Selector BottomSheet */}
       <BottomSheet
